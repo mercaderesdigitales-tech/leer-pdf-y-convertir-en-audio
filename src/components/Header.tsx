@@ -1,0 +1,140 @@
+import React from 'react';
+import { Volume2, Settings, Download, Sun, Moon, Sparkles, Zap, Home, HelpCircle } from 'lucide-react';
+import { TTSEngineType } from '../types';
+
+interface HeaderProps {
+  engine: TTSEngineType;
+  onOpenSettings: () => void;
+  onOpenExport: () => void;
+  onOpenHowItWorks: () => void;
+  onGoHome: () => void;
+  hasDocument: boolean;
+  theme: 'light' | 'dark';
+  onToggleTheme: () => void;
+  onOpenFilePicker: () => void;
+}
+
+export const Header: React.FC<HeaderProps> = ({
+  engine,
+  onOpenSettings,
+  onOpenExport,
+  onOpenHowItWorks,
+  onGoHome,
+  hasDocument,
+  theme,
+  onToggleTheme,
+  onOpenFilePicker,
+}) => {
+  return (
+    <header className="sticky top-0 z-40 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 transition-colors">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-8">
+        {/* Zone 1: Brand Wordmark (Clickable to go home) */}
+        <div
+          onClick={onGoHome}
+          className="flex items-center gap-3 shrink-0 cursor-pointer group"
+          title="Ir a la página de inicio"
+        >
+          <div className="w-9 h-9 rounded-lg bg-indigo-600 flex items-center justify-center text-white shadow-sm group-hover:bg-indigo-700 transition-colors">
+            <Volume2 className="w-5 h-5" />
+          </div>
+          <div className="flex flex-col">
+            <span className="text-lg font-bold tracking-tight text-slate-900 dark:text-white whitespace-nowrap group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
+              VozPDF
+            </span>
+          </div>
+        </div>
+
+        {/* Zone 2: Navigation & Status Links */}
+        <nav className="hidden md:flex items-center gap-6 text-sm font-medium text-slate-600 dark:text-slate-300">
+          {hasDocument && (
+            <button
+              onClick={onGoHome}
+              className="flex items-center gap-1.5 hover:text-slate-900 dark:hover:text-white transition-colors cursor-pointer whitespace-nowrap font-medium text-slate-700 dark:text-slate-200"
+              title="Volver a la pantalla principal"
+            >
+              <Home className="w-4 h-4 text-slate-500" />
+              <span>Inicio / Cargar otro PDF</span>
+            </button>
+          )}
+
+          <button
+            onClick={onOpenSettings}
+            className="flex items-center gap-1.5 hover:text-slate-900 dark:hover:text-white transition-colors cursor-pointer whitespace-nowrap"
+            title="Cambiar motor o voz"
+          >
+            {engine === 'webspeech' ? (
+              <>
+                <Zap className="w-4 h-4 text-amber-500" />
+                <span>Motor: Rápido (Web Speech)</span>
+              </>
+            ) : (
+              <>
+                <Sparkles className="w-4 h-4 text-indigo-500" />
+                <span>Motor: Alta Calidad (Kokoro)</span>
+              </>
+            )}
+          </button>
+
+          <button
+            onClick={onOpenHowItWorks}
+            className="flex items-center gap-1.5 hover:text-slate-900 dark:hover:text-white transition-colors cursor-pointer whitespace-nowrap"
+          >
+            <HelpCircle className="w-4 h-4 text-slate-400" />
+            <span>Cómo funciona</span>
+          </button>
+        </nav>
+
+        {/* Zone 3: Primary Actions */}
+        <div className="flex items-center gap-2.5 shrink-0">
+          {/* Mobile Home button */}
+          {hasDocument && (
+            <button
+              onClick={onGoHome}
+              className="md:hidden p-2 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors cursor-pointer"
+              title="Volver al inicio"
+              aria-label="Inicio"
+            >
+              <Home className="w-4 h-4" />
+            </button>
+          )}
+
+          <button
+            onClick={onToggleTheme}
+            className="p-2 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors cursor-pointer"
+            title={theme === 'dark' ? 'Modo claro' : 'Modo oscuro'}
+            aria-label="Cambiar tema"
+          >
+            {theme === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+          </button>
+
+          <button
+            onClick={onOpenSettings}
+            className="p-2 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors cursor-pointer"
+            title="Configuración de voz y lectura"
+            aria-label="Configuración"
+          >
+            <Settings className="w-4 h-4" />
+          </button>
+
+          {hasDocument && (
+            <button
+              onClick={onOpenExport}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-slate-700 dark:text-slate-200 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-lg transition-colors whitespace-nowrap cursor-pointer"
+              title="Descargar audio en MP3 o WAV"
+            >
+              <Download className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Exportar audio</span>
+            </button>
+          )}
+
+          <button
+            onClick={onOpenFilePicker}
+            className="px-3.5 py-1.5 text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 rounded-lg transition-colors shadow-sm whitespace-nowrap cursor-pointer"
+          >
+            {hasDocument ? 'Cargar otro PDF' : 'Subir PDF'}
+          </button>
+        </div>
+      </div>
+    </header>
+  );
+};

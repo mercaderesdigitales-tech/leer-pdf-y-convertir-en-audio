@@ -1,0 +1,8 @@
+{
+  "name": "VozPDF - Lector de PDF a Audio",
+  "description": "Convierte documentos PDF a audio con reproductor sincronizado, Web Speech API y síntesis de alta calidad 100% en el navegador.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

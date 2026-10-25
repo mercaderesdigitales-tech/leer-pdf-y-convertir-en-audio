@@ -1,0 +1,155 @@
+import React, { useState, useRef } from 'react';
+import { Upload, FileText, ShieldCheck, Zap } from 'lucide-react';
+
+interface DropzoneProps {
+  onFileSelected: (file: File) => void;
+  isLoading: boolean;
+  loadingProgress?: { current: number; total: number; stage: string };
+}
+
+export const Dropzone: React.FC<DropzoneProps> = ({
+  onFileSelected,
+  isLoading,
+  loadingProgress,
+}) => {
+  const [isDragOver, setIsDragOver] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragOver(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragOver(false);
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragOver(false);
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      const file = e.dataTransfer.files[0];
+      if (file.type === 'application/pdf' || file.name.endsWith('.pdf')) {
+        onFileSelected(file);
+      } else {
+        alert('Por favor selecciona un archivo PDF válido (.pdf).');
+      }
+    }
+  };
+
+  const handleFileInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files.length > 0) {
+      onFileSelected(e.target.files[0]);
+    }
+  };
+
+  return (
+    <div className="w-full max-w-4xl mx-auto px-4 py-8">
+      {/* Hero presentation */}
+      <div className="text-center mb-8">
+        <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-slate-900 dark:text-white mb-3">
+          Convierte tus PDFs en audiolibros interactivos
+        </h1>
+        <p className="text-base text-slate-600 dark:text-slate-400 max-w-2xl mx-auto">
+          Extrae texto limpio de cualquier PDF y escúchalo con Web Speech API o con el modelo neuronal Kokoro-82M. 100% en el navegador, sin APIs de pago ni servidores.
+        </p>
+      </div>
+
+      {/* Drop zone container */}
+      <div
+        onDragOver={handleDragOver}
+        onDragLeave={handleDragLeave}
+        onDrop={handleDrop}
+        onClick={() => !isLoading && fileInputRef.current?.click()}
+        className={`relative border-2 border-dashed rounded-2xl p-8 sm:p-12 text-center transition-all cursor-pointer ${
+          isDragOver
+            ? 'border-indigo-500 bg-indigo-50/50 dark:bg-indigo-950/20 scale-[1.01]'
+            : 'border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 hover:border-indigo-400 hover:bg-slate-50/50 dark:hover:bg-slate-800/50 shadow-sm'
+        }`}
+      >
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept=".pdf,application/pdf"
+          onChange={handleFileInputChange}
+          className="hidden"
+          disabled={isLoading}
+        />
+
+        {isLoading ? (
+          <div className="flex flex-col items-center justify-center py-6">
+            <div className="w-12 h-12 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin mb-4" />
+            <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-1">
+              Extrayendo y procesando documento...
+            </h3>
+            {loadingProgress && loadingProgress.total > 0 && (
+              <p className="text-sm text-slate-500 dark:text-slate-400">
+                Página {loadingProgress.current} de {loadingProgress.total} ({loadingProgress.stage === 'reading' ? 'Leyendo texto' : 'Limpiando formato'})
+              </p>
+            )}
+          </div>
+        ) : (
+          <div className="flex flex-col items-center justify-center">
+            <div className="w-16 h-16 rounded-2xl bg-indigo-50 dark:bg-indigo-950/50 text-indigo-600 dark:text-indigo-400 flex items-center justify-center mb-4">
+              <Upload className="w-8 h-8" />
+            </div>
+
+            <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-1">
+              Arrastra y suelta tu archivo PDF aquí
+            </h3>
+            <p className="text-sm text-slate-500 dark:text-slate-400 mb-6">
+              o haz clic para explorar tus archivos locales
+            </p>
+
+            <div className="flex items-center justify-center">
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  fileInputRef.current?.click();
+                }}
+                className="px-5 py-2.5 text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg shadow-sm transition-colors cursor-pointer"
+              >
+                Seleccionar PDF
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Feature bullets adhering to zero-pill metadata rule */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 mt-8">
+        <div className="p-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm">
+          <div className="w-8 h-8 rounded-lg bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400 flex items-center justify-center mb-3">
+            <ShieldCheck className="w-5 h-5" />
+          </div>
+          <h4 className="text-sm font-semibold text-slate-900 dark:text-white mb-1">100% Privado y Local</h4>
+          <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
+            Tus documentos nunca salen de tu ordenador. Todo el análisis de texto y síntesis de voz se ejecutan en tu propio navegador.
+          </p>
+        </div>
+
+        <div className="p-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm">
+          <div className="w-8 h-8 rounded-lg bg-amber-50 dark:bg-amber-950/50 text-amber-600 dark:text-amber-400 flex items-center justify-center mb-3">
+            <Zap className="w-5 h-5" />
+          </div>
+          <h4 className="text-sm font-semibold text-slate-900 dark:text-white mb-1">Doble Motor de Voz</h4>
+          <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
+            Elige entre Web Speech API para lectura instantánea sin esperas, o Kokoro-82M para una calidad neuronal de audiolibro.
+          </p>
+        </div>
+
+        <div className="p-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm">
+          <div className="w-8 h-8 rounded-lg bg-indigo-50 dark:bg-indigo-950/50 text-indigo-600 dark:text-indigo-400 flex items-center justify-center mb-3">
+            <FileText className="w-5 h-5" />
+          </div>
+          <h4 className="text-sm font-semibold text-slate-900 dark:text-white mb-1">Limpieza Inteligente</h4>
+          <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
+            Elimina automáticamente guiones de salto de línea, encabezados recurrentes y números de página para una narración fluida.
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+};
