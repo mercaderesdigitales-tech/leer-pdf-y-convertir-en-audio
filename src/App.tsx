@@ -35,6 +35,7 @@ import { ResumeDialog } from './components/ResumeDialog';
 import { GoogleDriveModal } from './components/GoogleDriveModal';
 import { InstallAppModal } from './components/InstallAppModal';
 import { UploadChoiceModal } from './components/UploadChoiceModal';
+import { MobileBottomNav } from './components/MobileBottomNav';
 
 export default function App() {
   const [isUploadChoiceOpen, setIsUploadChoiceOpen] = useState<boolean>(false);
@@ -572,7 +573,7 @@ export default function App() {
       {/* Main Content Area */}
       <main className="flex-1 flex flex-col">
         {!documentData ? (
-          <div className="flex-1 pb-16">
+          <div className="flex-1 pb-24 md:pb-16">
             {/* Upload Zone */}
             <Dropzone
               onFileSelected={handleFileSelected}
@@ -629,10 +630,24 @@ export default function App() {
               onChangeSpeed={(s) => setSpeed(s)}
               onChangeVolume={(v) => setVolume(v)}
               onOpenSettings={() => setIsSettingsOpen(true)}
+              onGoHome={handleGoHome}
+              onOpenUploadModal={() => setIsUploadChoiceOpen(true)}
+              onOpenExport={() => setIsExportOpen(true)}
             />
           </>
         )}
       </main>
+
+      {/* Mobile Bottom Navigation (active when on home screen) */}
+      <MobileBottomNav
+        hasDocument={Boolean(documentData)}
+        onOpenUploadModal={() => setIsUploadChoiceOpen(true)}
+        onOpenSettings={() => setIsSettingsOpen(true)}
+        onOpenHowItWorks={() => setIsHowItWorksOpen(true)}
+        onOpenInstallApp={() => setIsInstallAppOpen(true)}
+        onGoHome={handleGoHome}
+        onOpenExport={() => setIsExportOpen(true)}
+      />
 
       {/* Resume Progress Dialog */}
       {resumeCandidate && (

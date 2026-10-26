@@ -33,6 +33,32 @@ export async function extractPDFData(
   const totalPages = pdfDoc.numPages;
   const rawPageTexts: string[] = [];
 
+  // Extract author and date metadata from PDF
+  let author = '';
+  let creationDate = '';
+
+  try {
+    const meta = await pdfDoc.getMetadata();
+    if (meta?.info) {
+      const info = meta.info as Record<string, any>;
+      author = (info.Author || info.Creator || info.Producer || '').trim();
+      creationDate = (info.CreationDate || info.ModDate || '').trim();
+    }
+  } catch {
+    // ignore
+  }
+
+  // Fallback author heuristics from filename if metadata author is empty (e.g. "Cervantes - Don Quijote.pdf")
+  if (!author && fileName) {
+    const clean = fileName.replace(/\.pdf$/i, '').trim();
+    if (clean.includes(' - ')) {
+      const parts = clean.split(' - ');
+      if (parts.length >= 2 && parts[0].length >= 3 && parts[0].length <= 35) {
+        author = parts[0].trim();
+      }
+    }
+  }
+
   // 1. Extract text from each page
   for (let pageNum = 1; pageNum <= totalPages; pageNum++) {
     onProgress?.(pageNum, totalPages, 'reading');
@@ -88,6 +114,8 @@ export async function extractPDFData(
 
   return {
     name: fileName,
+    author: author || undefined,
+    creationDate: creationDate || undefined,
     fileSize,
     totalPages,
     pages: processedPages,
@@ -128,6 +156,8 @@ Con grandísimo contento y alborozo vio con cuánta facilidad había dado princi
 
   return {
     name: 'Don_Quijote_Capitulos_1_y_2.pdf',
+    author: 'Miguel de Cervantes Saavedra',
+    creationDate: '1605',
     fileSize: 45200,
     totalPages: 2,
     pages,

@@ -11,6 +11,9 @@ import {
   Sparkles,
   Zap,
   Sliders,
+  Home,
+  Upload,
+  Download,
 } from 'lucide-react';
 import { SentenceItem, TTSEngineType } from '../types';
 
@@ -32,6 +35,9 @@ interface AudioPlayerBarProps {
   onChangeSpeed: (speed: number) => void;
   onChangeVolume: (volume: number) => void;
   onOpenSettings: () => void;
+  onGoHome?: () => void;
+  onOpenUploadModal?: () => void;
+  onOpenExport?: () => void;
 }
 
 export const AudioPlayerBar: React.FC<AudioPlayerBarProps> = ({
@@ -52,6 +58,9 @@ export const AudioPlayerBar: React.FC<AudioPlayerBarProps> = ({
   onChangeSpeed,
   onChangeVolume,
   onOpenSettings,
+  onGoHome,
+  onOpenUploadModal,
+  onOpenExport,
 }) => {
   const speeds = [0.75, 1.0, 1.25, 1.5, 2.0];
 
@@ -229,6 +238,66 @@ export const AudioPlayerBar: React.FC<AudioPlayerBarProps> = ({
               )}
             </button>
           </div>
+        </div>
+
+        {/* Mobile Bottom Thumb Actions: lets mobile users tap home, upload, settings, and export from the bottom */}
+        <div className="flex sm:hidden items-center justify-around w-full pt-2 mt-1.5 border-t border-slate-100 dark:border-slate-800 text-[10px]">
+          {onGoHome && (
+            <button
+              type="button"
+              onClick={onGoHome}
+              className="flex flex-col items-center gap-0.5 text-slate-600 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 py-0.5 px-2 cursor-pointer active:scale-95 transition-all"
+            >
+              <Home className="w-4 h-4" />
+              <span>Inicio</span>
+            </button>
+          )}
+
+          {onOpenUploadModal && (
+            <button
+              type="button"
+              onClick={onOpenUploadModal}
+              className="flex flex-col items-center gap-0.5 text-slate-600 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 py-0.5 px-2 cursor-pointer active:scale-95 transition-all"
+            >
+              <Upload className="w-4 h-4" />
+              <span>Subir PDF</span>
+            </button>
+          )}
+
+          <button
+            type="button"
+            onClick={onOpenSettings}
+            className="flex flex-col items-center gap-0.5 text-slate-600 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 py-0.5 px-2 cursor-pointer active:scale-95 transition-all"
+          >
+            <Sliders className="w-4 h-4" />
+            <span>Ajustes</span>
+          </button>
+
+          {onOpenExport && (
+            <button
+              type="button"
+              onClick={onOpenExport}
+              className="flex flex-col items-center gap-0.5 text-indigo-600 dark:text-indigo-400 font-semibold py-0.5 px-2 cursor-pointer active:scale-95 transition-all"
+            >
+              <Download className="w-4 h-4" />
+              <span>Exportar</span>
+            </button>
+          )}
+
+          <button
+            type="button"
+            onClick={() => {
+              const currIdx = speeds.indexOf(speed);
+              const nextSpeed = speeds[(currIdx + 1) % speeds.length];
+              onChangeSpeed(nextSpeed);
+            }}
+            className="flex flex-col items-center gap-0.5 text-slate-600 dark:text-slate-400 py-0.5 px-2 cursor-pointer active:scale-95 transition-all font-mono"
+          >
+            <span className="w-4 h-4 rounded bg-slate-100 dark:bg-slate-800 flex items-center justify-center font-bold text-[9px] text-indigo-600 dark:text-indigo-400">
+              {speed}x
+            </span>
+            <span>Velocidad</span>
+          </button>
         </div>
       </div>
     </aside>

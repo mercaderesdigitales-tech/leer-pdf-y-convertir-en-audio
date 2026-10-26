@@ -7,6 +7,8 @@ const STORE_NAME = 'documents';
 interface StoredDocumentRecord {
   id: string;
   name: string;
+  author?: string;
+  creationDate?: string;
   fileSize: number;
   totalPages: number;
   totalWords: number;
@@ -60,6 +62,8 @@ export async function saveDocumentToHistory(
   const record: StoredDocumentRecord = {
     id,
     name: doc.name,
+    author: doc.author,
+    creationDate: doc.creationDate,
     fileSize: doc.fileSize,
     totalPages: doc.totalPages,
     totalWords: doc.totalWords,
@@ -137,6 +141,8 @@ export async function getRecentDocuments(): Promise<HistoryItem[]> {
         const items: HistoryItem[] = records.map((r) => ({
           id: r.id,
           name: r.name,
+          author: r.author || r.documentData?.author || undefined,
+          creationDate: r.creationDate || r.documentData?.creationDate || undefined,
           fileSize: r.fileSize,
           totalPages: r.totalPages,
           totalWords: r.totalWords,

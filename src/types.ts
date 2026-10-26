@@ -31,6 +31,8 @@ export interface PageData {
 
 export interface PDFDocumentData {
   name: string;
+  author?: string;
+  creationDate?: string;
   fileSize: number;
   totalPages: number;
   pages: PageData[];
@@ -91,6 +93,8 @@ export interface ExportProgress {
 export interface HistoryItem {
   id: string;
   name: string;
+  author?: string;
+  creationDate?: string;
   fileSize: number;
   totalPages: number;
   totalWords: number;
