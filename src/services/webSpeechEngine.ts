@@ -8,6 +8,60 @@ export interface WebSpeechCallbacks {
   onBoundary?: (charIndex: number) => void;
 }
 
+/**
+ * Heuristics to reliably detect voice gender across Android (Google TTS / Samsung),
+ * iOS (Safari / Apple TTS), Windows (SAPI/OneCore), and macOS.
+ */
+export function detectVoiceGender(name: string, voiceURI: string = '', lang: string = ''): 'Masculino' | 'Femenino' {
+  const str = `${name} ${voiceURI} ${lang}`.toLowerCase();
+
+  // Explicit male markers and common male voice names in Spanish & English
+  const maleKeywords = [
+    'male', 'hombre', 'masculin', 'guy', 'boy', 'man',
+    // Spanish male names
+    'jorge', 'diego', 'pablo', 'carlos', 'manuel', 'alvaro', 'álvaro', 'enrique', 'david',
+    'pedro', 'miguel', 'andres', 'andrés', 'javier', 'juan', 'raul', 'raúl', 'alberto',
+    'fernando', 'gonzalo', 'hector', 'héctor', 'sergio', 'victor', 'víctor', 'antonio',
+    'mateo', 'santiago', 'rodrigo', 'francisco', 'julio', 'marcos', 'rafael', 'ignacio',
+    // Android Google TTS male identifiers / sub-packs
+    'es-es-x-eed', 'es-es-x-eef', 'es-us-x-sfd', 'es-us-x-sfg', 'es-419-x-sfb', 'es-419-x-sfd',
+    // English & other male names
+    'george', 'daniel', 'oliver', 'thomas', 'arthur', 'fred', 'alex', 'bruce', 'reed',
+    'junior', 'ralph', 'michael', 'fenrir', 'bm_', 'am_', 'siri male', 'james', 'guy'
+  ];
+
+  // Explicit female markers and common female voice names in Spanish & English
+  const femaleKeywords = [
+    'female', 'mujer', 'femenin', 'girl', 'woman',
+    // Spanish female names
+    'monica', 'mónica', 'paulina', 'sabina', 'helena', 'laura', 'ana', 'lucia', 'lucía',
+    'carmen', 'elena', 'isabel', 'marta', 'sofia', 'sofía', 'rosa', 'teresa', 'conchita',
+    'paloma', 'penelope', 'penélope', 'raquel', 'silvia', 'yolanda', 'valeria', 'alicia',
+    'marisol', 'esmeralda', 'camila', 'jimena',
+    // Android Google TTS female identifiers
+    'es-es-x-ana', 'es-es-x-eea', 'es-us-x-sfb', 'es-419-x-sfa',
+    // English & other female names
+    'samantha', 'victoria', 'karen', 'zira', 'fiona', 'moira', 'tessa', 'veena', 'heart',
+    'bella', 'nicole', 'sky', 'emma', 'bf_', 'af_', 'siri female'
+  ];
+
+  for (const keyword of maleKeywords) {
+    if (str.includes(keyword)) return 'Masculino';
+  }
+
+  for (const keyword of femaleKeywords) {
+    if (str.includes(keyword)) return 'Femenino';
+  }
+
+  // Google default Spanish voice on Android ("Google español" / "español (España)")
+  // default package has female acoustic tone
+  if (str.includes('google') && (str.includes('español') || str.includes('spanish'))) {
+    return 'Femenino';
+  }
+
+  return 'Femenino';
+}
+
 export class WebSpeechEngine {
   private synth: SpeechSynthesis | null = null;
   private currentUtterance: SpeechSynthesisUtterance | null = null;
@@ -85,14 +139,13 @@ export class WebSpeechEngine {
 
     const voiceOptions: VoiceOption[] = this.voices.map((v) => {
       const id = v.voiceURI || v.name;
-      const lower = v.name.toLowerCase();
-      const isFemale = lower.includes('female') || lower.includes('mujer') || lower.includes('sabina') || lower.includes('monica') || lower.includes('paulina');
+      const detectedGender = detectVoiceGender(v.name, v.voiceURI, v.lang);
       return {
         id,
         name: v.name,
         lang: v.lang,
         engine: 'webspeech',
-        gender: isFemale ? 'Femenino' : 'Masculino',
+        gender: detectedGender,
         quality: v.localService ? 'Nativa / Local' : 'Online',
       };
     });
@@ -192,6 +245,9 @@ export class WebSpeechEngine {
 
   public setPitch(pitch: number) {
     this.pitch = Math.max(0.5, Math.min(1.5, pitch));
+    if (this.isPlaying && !this.isPaused) {
+      this.speakCurrentSentence();
+    }
   }
 
   public setVolume(volume: number) {

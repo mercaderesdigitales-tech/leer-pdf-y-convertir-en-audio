@@ -75,8 +75,17 @@ export const GoogleDriveModal: React.FC<GoogleDriveModalProps> = ({
       setToken(result.accessToken);
       await fetchFiles(result.accessToken);
     } catch (err: any) {
-      if (err.code !== 'auth/popup-closed-by-user') {
-        setAuthError(err.message || 'Error al iniciar sesión con Google');
+      const isCancelled =
+        err.code === 'auth/popup-closed-by-user' ||
+        err.message === 'auth/popup-closed-by-user' ||
+        err.message?.includes('popup-closed') ||
+        err.message?.includes('cancelado');
+
+      if (!isCancelled) {
+        setAuthError(
+          err.message ||
+            'Error al iniciar sesión con Google en Chrome. Asegúrate de permitir ventanas emergentes o abre en ventana nueva.'
+        );
       }
     } finally {
       setIsAuthenticating(false);

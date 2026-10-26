@@ -77,55 +77,106 @@ export const initGoogleDriveAuth = (
 };
 
 /**
- * Sign in using Google Identity Services (GIS) Token Client
+ * Ensure Google Identity Services (GIS) client script is ready
  */
-const signInWithGIS = (): Promise<{ user: GoogleDriveUser; accessToken: string }> => {
-  return new Promise((resolve, reject) => {
+export const ensureGisLoaded = (): Promise<any> => {
+  return new Promise((resolve) => {
+    if (typeof window === 'undefined') return resolve(null);
     const google = (window as any).google;
-    if (!google?.accounts?.oauth2) {
-      return reject(new Error('Google Identity Services no está listo en el navegador.'));
+    if (google?.accounts?.oauth2) {
+      return resolve(google);
     }
 
-    const tokenClient = google.accounts.oauth2.initTokenClient({
-      client_id: firebaseConfig.oAuthClientId,
-      scope: 'https://www.googleapis.com/auth/drive.readonly https://www.googleapis.com/auth/userinfo.profile https://www.googleapis.com/auth/userinfo.email',
-      prompt: 'select_account',
-      callback: async (tokenResponse: any) => {
-        if (tokenResponse.error) {
-          return reject(new Error(tokenResponse.error_description || tokenResponse.error));
-        }
-        if (!tokenResponse.access_token) {
-          return reject(new Error('No se recibió token de acceso de Google'));
-        }
+    const existingScript = document.querySelector('script[src*="accounts.google.com/gsi/client"]');
+    if (existingScript) {
+      existingScript.addEventListener('load', () => resolve((window as any).google));
+      // Fallback timeout in case load event already fired
+      setTimeout(() => resolve((window as any).google || null), 1500);
+      return;
+    }
 
-        const token = tokenResponse.access_token;
-        cachedAccessToken = token;
+    const script = document.createElement('script');
+    script.src = 'https://accounts.google.com/gsi/client';
+    script.async = true;
+    script.defer = true;
+    script.onload = () => resolve((window as any).google);
+    script.onerror = () => resolve(null);
+    document.head.appendChild(script);
+  });
+};
 
-        // Fetch basic profile info
-        try {
-          const userRes = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
-            headers: { Authorization: `Bearer ${token}` },
-          });
-          if (userRes.ok) {
-            const profile = await userRes.json();
-            cachedUserInfo = {
-              displayName: profile.name || profile.given_name,
-              email: profile.email,
-              photoURL: profile.picture,
-            };
+/**
+ * Sign in using Google Identity Services (GIS) Token Client
+ */
+export const signInWithGIS = async (): Promise<{ user: GoogleDriveUser; accessToken: string }> => {
+  const google = await ensureGisLoaded();
+  if (!google?.accounts?.oauth2) {
+    throw new Error('Google Identity Services no está listo. Abre la app en una ventana nueva de Chrome.');
+  }
+
+  return new Promise((resolve, reject) => {
+    try {
+      const tokenClient = google.accounts.oauth2.initTokenClient({
+        client_id: firebaseConfig.oAuthClientId,
+        scope:
+          'https://www.googleapis.com/auth/drive.readonly https://www.googleapis.com/auth/userinfo.profile https://www.googleapis.com/auth/userinfo.email',
+        callback: async (tokenResponse: any) => {
+          if (tokenResponse.error) {
+            if (tokenResponse.error === 'popup_closed' || tokenResponse.error === 'access_denied') {
+              return reject(new Error('auth/popup-closed-by-user'));
+            }
+            return reject(new Error(tokenResponse.error_description || tokenResponse.error));
           }
-        } catch {
-          cachedUserInfo = { displayName: 'Usuario de Google', email: '' };
-        }
+          if (!tokenResponse.access_token) {
+            return reject(new Error('No se recibió token de acceso de Google'));
+          }
 
-        resolve({
-          user: cachedUserInfo || { displayName: 'Usuario de Google', email: '' },
-          accessToken: token,
-        });
-      },
-    });
+          const token = tokenResponse.access_token;
+          cachedAccessToken = token;
 
-    tokenClient.requestAccessToken();
+          // Fetch basic profile info
+          try {
+            const userRes = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+              headers: { Authorization: `Bearer ${token}` },
+            });
+            if (userRes.ok) {
+              const profile = await userRes.json();
+              cachedUserInfo = {
+                displayName: profile.name || profile.given_name,
+                email: profile.email,
+                photoURL: profile.picture,
+              };
+            }
+          } catch {
+            cachedUserInfo = { displayName: 'Usuario de Google', email: '' };
+          }
+
+          resolve({
+            user: cachedUserInfo || { displayName: 'Usuario de Google', email: '' },
+            accessToken: token,
+          });
+        },
+        error_callback: (err: any) => {
+          console.warn('GIS error_callback received:', err);
+          if (err.type === 'popup_closed') {
+            reject(new Error('auth/popup-closed-by-user'));
+          } else if (err.type === 'popup_failed_to_open') {
+            reject(
+              new Error(
+                'Chrome bloqueó la ventana emergente de autenticación. Permite las ventanas emergentes en Chrome para este sitio.'
+              )
+            );
+          } else {
+            reject(new Error(err.message || 'Error en el servicio de inicio de sesión de Google'));
+          }
+        },
+      });
+
+      // Pass prompt parameter directly to requestAccessToken, not initTokenClient
+      tokenClient.requestAccessToken({ prompt: 'select_account' });
+    } catch (err: any) {
+      reject(err);
+    }
   });
 };
 
@@ -136,7 +187,21 @@ export const signInWithGoogleDrive = async (): Promise<{ user: GoogleDriveUser; 
   try {
     isSigningIn = true;
 
-    // Try Firebase signInWithPopup first
+    // Check if in iframe: if in iframe, GIS is often much more reliable than Firebase Auth iframe handler in Chrome
+    const inIframe = isRunningInIframe();
+
+    if (inIframe) {
+      try {
+        return await signInWithGIS();
+      } catch (gisError: any) {
+        if (gisError.message === 'auth/popup-closed-by-user') {
+          throw gisError;
+        }
+        console.warn('GIS in iframe failed, trying Firebase popup fallback...', gisError);
+      }
+    }
+
+    // Try Firebase signInWithPopup
     try {
       const result = await signInWithPopup(auth, provider);
       const credential = GoogleAuthProvider.credentialFromResult(result);
@@ -164,20 +229,27 @@ export const signInWithGoogleDrive = async (): Promise<{ user: GoogleDriveUser; 
         throw fbError;
       }
 
-      // Check if Google Identity Services is available
-      const google = (window as any).google;
-      if (google?.accounts?.oauth2) {
+      // Check if Google Identity Services is available or can be loaded
+      try {
         return await signInWithGIS();
-      }
+      } catch (gisFallbackError: any) {
+        if (gisFallbackError.message === 'auth/popup-closed-by-user') {
+          throw gisFallbackError;
+        }
 
-      // If GIS not available or both failed, clarify error
-      if (fbError.code === 'auth/popup-blocked') {
-        throw new Error('La ventana emergente fue bloqueada por tu navegador. Por favor permite las ventanas emergentes para este sitio.');
-      } else if (fbError.code === 'auth/unauthorized-domain') {
-        throw new Error('Este dominio no está autorizado directamente en Firebase. Abre la app en una ventana nueva para continuar.');
-      }
+        // If both failed, clarify error for Google Chrome
+        if (fbError.code === 'auth/popup-blocked') {
+          throw new Error(
+            'La ventana emergente fue bloqueada por Google Chrome. Por favor permite las ventanas emergentes en los ajustes de Chrome para este sitio.'
+          );
+        } else if (fbError.code === 'auth/unauthorized-domain') {
+          throw new Error(
+            'Chrome bloqueó la autorización por políticas de dominio y cookies. Abre la app en una pestaña nueva para iniciar sesión con Drive.'
+          );
+        }
 
-      throw fbError;
+        throw gisFallbackError || fbError;
+      }
     }
   } catch (error: any) {
     console.error('Google Sign In error:', error);

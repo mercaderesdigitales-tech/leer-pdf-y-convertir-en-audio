@@ -1,5 +1,21 @@
 import React, { useState } from 'react';
-import { X, Sparkles, Zap, Sliders, Volume2, Gauge, Check, Cpu, Play, Volume1, Search } from 'lucide-react';
+import {
+  X,
+  Sparkles,
+  Zap,
+  Sliders,
+  Volume2,
+  Gauge,
+  Check,
+  Cpu,
+  Play,
+  Volume1,
+  Search,
+  ChevronDown,
+  ChevronUp,
+  HelpCircle,
+  Music,
+} from 'lucide-react';
 import { CleaningOptions, KokoroModelProgress, PageRange, TTSEngineType, VoiceOption } from '../types';
 
 interface SettingsModalProps {
@@ -50,8 +66,10 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   onInitKokoro,
 }) => {
   const [langFilter, setLangFilter] = useState<'all' | 'es' | 'en' | 'other'>('all');
+  const [genderFilter, setGenderFilter] = useState<'all' | 'Masculino' | 'Femenino'>('all');
   const [voiceSearchQuery, setVoiceSearchQuery] = useState<string>('');
   const [isTestingVoice, setIsTestingVoice] = useState<boolean>(false);
+  const [showMobileHelp, setShowMobileHelp] = useState<boolean>(false);
 
   if (!isOpen) return null;
 
@@ -66,8 +84,10 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     const l = (v.lang || '').toLowerCase();
     return !l.startsWith('es') && !l.startsWith('en');
   }).length;
+  const countMale = engineVoices.filter((v) => v.gender === 'Masculino').length;
+  const countFemale = engineVoices.filter((v) => v.gender === 'Femenino').length;
 
-  // Apply language filter and search query
+  // Apply language filter, gender filter and search query
   const currentVoices = engineVoices.filter((v) => {
     const l = (v.lang || '').toLowerCase();
     const matchesLang =
@@ -80,6 +100,10 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
         : !l.startsWith('es') && !l.startsWith('en');
 
     if (!matchesLang) return false;
+
+    if (genderFilter !== 'all') {
+      if (v.gender !== genderFilter) return false;
+    }
 
     if (voiceSearchQuery.trim()) {
       const q = voiceSearchQuery.toLowerCase();
@@ -226,7 +250,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
                 <input
                   type="text"
-                  placeholder="Buscar voz por nombre o acento (ej. Google, Español, Jorge, Paulina...)"
+                  placeholder="Buscar voz por nombre o país (ej. Jorge, Google, Diego, Michael, Español...)"
                   value={voiceSearchQuery}
                   onChange={(e) => setVoiceSearchQuery(e.target.value)}
                   className="w-full pl-8 pr-8 py-1.5 text-xs bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-indigo-500"
@@ -242,7 +266,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 )}
               </div>
 
-              {/* Language filter pills for quick discovery on mobile */}
+              {/* Filter Row 1: Language filter pills */}
               <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800 p-0.5 rounded-lg text-[11px] overflow-x-auto">
                 <button
                   type="button"
@@ -253,7 +277,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                       : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
                   }`}
                 >
-                  Todas ({countAll})
+                  Todos los idiomas ({countAll})
                 </button>
                 <button
                   type="button"
@@ -291,19 +315,68 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                   </button>
                 )}
               </div>
+
+              {/* Filter Row 2: Gender filter pills for fast mobile filtering */}
+              <div className="flex items-center gap-1.5 pt-0.5">
+                <span className="text-[10px] uppercase font-bold text-slate-400 shrink-0">Género:</span>
+                <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800 p-0.5 rounded-lg text-[11px] overflow-x-auto flex-1">
+                  <button
+                    type="button"
+                    onClick={() => setGenderFilter('all')}
+                    className={`px-2.5 py-1 rounded-md font-medium whitespace-nowrap transition-colors cursor-pointer ${
+                      genderFilter === 'all'
+                        ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-300 shadow-xs'
+                        : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                    }`}
+                  >
+                    Todas ({engineVoices.length})
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setGenderFilter('Masculino')}
+                    className={`px-2.5 py-1 rounded-md font-medium whitespace-nowrap transition-colors cursor-pointer flex items-center gap-1 ${
+                      genderFilter === 'Masculino'
+                        ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-300 shadow-xs font-bold'
+                        : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                    }`}
+                  >
+                    <span>🧔</span>
+                    <span>Masculinas ({countMale})</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setGenderFilter('Femenino')}
+                    className={`px-2.5 py-1 rounded-md font-medium whitespace-nowrap transition-colors cursor-pointer flex items-center gap-1 ${
+                      genderFilter === 'Femenino'
+                        ? 'bg-white dark:bg-slate-700 text-pink-600 dark:text-pink-300 shadow-xs font-bold'
+                        : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                    }`}
+                  >
+                    <span>👩</span>
+                    <span>Femeninas ({countFemale})</span>
+                  </button>
+                </div>
+              </div>
             </div>
 
             {/* Selected voice showcase with test audio button */}
             <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-800 flex items-center justify-between gap-3">
               <div className="min-w-0 flex-1">
-                <span className="text-[10px] uppercase font-bold text-indigo-600 dark:text-indigo-400">
-                  Voz activa seleccionada:
+                <span className="text-[10px] uppercase font-bold text-indigo-600 dark:text-indigo-400 flex items-center gap-1">
+                  <span>Voz activa seleccionada:</span>
+                  <span className={`px-1.5 py-0.2 rounded text-[9px] font-semibold ${
+                    selectedVoice?.gender === 'Masculino'
+                      ? 'bg-indigo-100 dark:bg-indigo-900/60 text-indigo-700 dark:text-indigo-300'
+                      : 'bg-pink-100 dark:bg-pink-900/60 text-pink-700 dark:text-pink-300'
+                  }`}>
+                    {selectedVoice?.gender === 'Masculino' ? '🧔 Masculina' : '👩 Femenina'}
+                  </span>
                 </span>
-                <p className="text-xs font-bold text-slate-900 dark:text-white truncate">
+                <p className="text-xs font-bold text-slate-900 dark:text-white truncate mt-0.5">
                   {selectedVoice ? selectedVoice.name : 'Ninguna seleccionada'}
                 </p>
                 <p className="text-[11px] text-slate-400 font-mono">
-                  {selectedVoice?.lang} {selectedVoice?.gender ? `· ${selectedVoice.gender}` : ''} {selectedVoice?.quality ? `· ${selectedVoice.quality}` : ''}
+                  {selectedVoice?.lang} {selectedVoice?.quality ? `· ${selectedVoice.quality}` : ''} · Tono: {pitch <= 0.85 ? '🧔 Grave (Masc)' : pitch >= 1.1 ? '👩 Agudo (Fem)' : '🎙️ Normal'}
                 </p>
               </div>
 
@@ -320,24 +393,52 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             </div>
 
             {/* Mobile-friendly voice selection list */}
-            <div className="space-y-1.5 max-h-56 overflow-y-auto pr-1 border border-slate-200 dark:border-slate-800 rounded-xl p-1 bg-white dark:bg-slate-900">
+            <div className="space-y-1.5 max-h-52 overflow-y-auto pr-1 border border-slate-200 dark:border-slate-800 rounded-xl p-1.5 bg-white dark:bg-slate-900">
               {currentVoices.length === 0 ? (
-                <div className="py-8 text-center text-xs text-slate-400 space-y-1">
-                  <p>No se encontraron voces con el filtro o búsqueda actual.</p>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setLangFilter('all');
-                      setVoiceSearchQuery('');
-                    }}
-                    className="text-indigo-600 dark:text-indigo-400 text-xs underline font-medium cursor-pointer"
-                  >
-                    Restablecer filtros y ver todas las voces
-                  </button>
+                <div className="py-6 px-3 text-center text-xs text-slate-500 dark:text-slate-400 space-y-2">
+                  <p className="font-medium">
+                    {genderFilter === 'Masculino'
+                      ? 'Tu móvil o navegador no tiene voces masculinas instaladas de fábrica.'
+                      : 'No se encontraron voces con los filtros seleccionados.'}
+                  </p>
+                  {genderFilter === 'Masculino' ? (
+                    <div className="p-2.5 rounded-lg bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-800 text-[11px] text-indigo-900 dark:text-indigo-200 text-left space-y-1.5">
+                      <p className="font-semibold flex items-center gap-1">
+                        <span>💡 Solución rápida:</span>
+                      </p>
+                      <p>
+                        Pulsa abajo en <strong>"🧔 Modo Masculino (Grave)"</strong> para que el motor модуле el tono de la voz estándar a un timbre masculino al instante.
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          onChangePitch(0.80);
+                          setGenderFilter('all');
+                        }}
+                        className="inline-flex items-center gap-1 px-2.5 py-1 rounded bg-indigo-600 text-white font-semibold text-xs hover:bg-indigo-700 transition-colors cursor-pointer"
+                      >
+                        <span>Activar Tono Masculino (0.8x)</span>
+                      </button>
+                    </div>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setLangFilter('all');
+                        setGenderFilter('all');
+                        setVoiceSearchQuery('');
+                      }}
+                      className="text-indigo-600 dark:text-indigo-400 text-xs underline font-medium cursor-pointer"
+                    >
+                      Restablecer filtros y ver todas las voces
+                    </button>
+                  )}
                 </div>
               ) : (
                 currentVoices.map((v) => {
                   const isSelected = v.id === selectedVoiceId;
+                  const isMale = v.gender === 'Masculino';
+
                   return (
                     <div
                       key={v.id}
@@ -359,6 +460,13 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                           {isSelected && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
                         </div>
                         <span className="truncate">{v.name}</span>
+                        <span className={`px-1.5 py-0.5 rounded text-[9px] font-semibold shrink-0 ${
+                          isMale
+                            ? 'bg-indigo-100 dark:bg-indigo-900/60 text-indigo-700 dark:text-indigo-300'
+                            : 'bg-pink-100 dark:bg-pink-900/60 text-pink-700 dark:text-pink-300'
+                        }`}>
+                          {isMale ? '🧔 Masc' : '👩 Fem'}
+                        </span>
                         <span className="text-[10px] text-slate-400 shrink-0 font-mono">({v.lang})</span>
                       </div>
 
@@ -377,6 +485,51 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                     </div>
                   );
                 })
+              )}
+            </div>
+
+            {/* Mobile Help Accordion: How to install native male voices */}
+            <div className="rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden bg-slate-50/50 dark:bg-slate-800/40">
+              <button
+                type="button"
+                onClick={() => setShowMobileHelp((prev) => !prev)}
+                className="w-full px-3.5 py-2.5 flex items-center justify-between text-left text-xs font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+              >
+                <div className="flex items-center gap-2">
+                  <HelpCircle className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400 shrink-0" />
+                  <span>📱 ¿Cómo activar más voces masculinas en Android y iPhone?</span>
+                </div>
+                {showMobileHelp ? (
+                  <ChevronUp className="w-4 h-4 text-slate-400" />
+                ) : (
+                  <ChevronDown className="w-4 h-4 text-slate-400" />
+                )}
+              </button>
+
+              {showMobileHelp && (
+                <div className="px-3.5 pb-3 text-[11px] text-slate-600 dark:text-slate-400 space-y-2 border-t border-slate-200 dark:border-slate-700/60 pt-2.5">
+                  <div>
+                    <strong className="text-slate-800 dark:text-slate-200">En Android (Servicios de Google):</strong>
+                    <ol className="list-decimal list-inside pl-1 space-y-0.5 mt-0.5">
+                      <li>Abre <strong>Ajustes del teléfono</strong> &gt; <strong>Accesibilidad</strong>.</li>
+                      <li>Pulsa en <strong>Salida de texto a voz</strong>.</li>
+                      <li>Toca el icono de engranaje ⚙️ junto a <em>Motor de Google</em>.</li>
+                      <li>Selecciona <strong>Instalar datos de voz</strong> &gt; <strong>Español</strong>.</li>
+                      <li>Descarga la <strong>Voz 2</strong> o <strong>Voz 3</strong> (paquetes masculinos).</li>
+                    </ol>
+                  </div>
+                  <div>
+                    <strong className="text-slate-800 dark:text-slate-200">En iPhone / iPad (iOS):</strong>
+                    <ol className="list-decimal list-inside pl-1 space-y-0.5 mt-0.5">
+                      <li>Abre <strong>Ajustes</strong> &gt; <strong>Accesibilidad</strong> &gt; <strong>Contenido leído</strong>.</li>
+                      <li>Entra en <strong>Voces</strong> &gt; <strong>Español</strong>.</li>
+                      <li>Descarga la voz de <strong>Jorge</strong> (voz masculina oficial).</li>
+                    </ol>
+                  </div>
+                  <p className="text-[10px] text-indigo-600 dark:text-indigo-400 font-medium">
+                    ⚡ <em>Recuerda: También puedes activar el botón "🧔 Modo Masculino (Grave)" en la sección de tono abajo para escuchar cualquier voz con timbre masculino de inmediato sin instalar nada.</em>
+                  </p>
+                </div>
               )}
             </div>
           </div>
@@ -406,6 +559,84 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 <span>1.0x (Normal)</span>
                 <span>1.5x</span>
                 <span>2.0x</span>
+              </div>
+            </div>
+
+            {/* Pitch & Simulated Gender Timbre (Solves mobile male voice limitation) */}
+            <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-800 space-y-2.5">
+              <div className="flex items-center justify-between text-xs font-semibold text-slate-700 dark:text-slate-300">
+                <span className="flex items-center gap-1.5">
+                  <Music className="w-3.5 h-3.5 text-indigo-500" />
+                  Tono de Voz y Timbre (Especial Móviles)
+                </span>
+                <span className="font-mono text-indigo-600 dark:text-indigo-400 font-bold">
+                  {pitch <= 0.85
+                    ? `🧔 Grave (Masculino) ${pitch}x`
+                    : pitch >= 1.15
+                    ? `👩 Agudo (Femenino) ${pitch}x`
+                    : `🎙️ Natural (${pitch}x)`}
+                </span>
+              </div>
+
+              {/* Quick Gender Timbre Presets */}
+              <div className="grid grid-cols-3 gap-2">
+                <button
+                  type="button"
+                  onClick={() => onChangePitch(0.80)}
+                  className={`py-2 px-2 rounded-lg border text-xs font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
+                    pitch <= 0.85
+                      ? 'border-indigo-600 bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 ring-1 ring-indigo-600 shadow-xs'
+                      : 'border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300'
+                  }`}
+                >
+                  <span>🧔</span>
+                  <span>Modo Masculino</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => onChangePitch(1.00)}
+                  className={`py-2 px-2 rounded-lg border text-xs font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
+                    pitch > 0.85 && pitch < 1.15
+                      ? 'border-indigo-600 bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 ring-1 ring-indigo-600 shadow-xs'
+                      : 'border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300'
+                  }`}
+                >
+                  <span>🎙️</span>
+                  <span>Tono Natural</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => onChangePitch(1.15)}
+                  className={`py-2 px-2 rounded-lg border text-xs font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
+                    pitch >= 1.15
+                      ? 'border-pink-600 bg-pink-50 dark:bg-pink-950/60 text-pink-700 dark:text-pink-300 ring-1 ring-pink-600 shadow-xs'
+                      : 'border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300'
+                  }`}
+                >
+                  <span>👩</span>
+                  <span>Modo Femenino</span>
+                </button>
+              </div>
+
+              {/* Fine-tuning Pitch Range Slider */}
+              <div className="pt-1">
+                <input
+                  type="range"
+                  min="0.5"
+                  max="1.5"
+                  step="0.05"
+                  value={pitch}
+                  onChange={(e) => onChangePitch(parseFloat(e.target.value))}
+                  className="w-full h-2 bg-slate-200 dark:bg-slate-700 rounded-lg appearance-none cursor-pointer accent-indigo-600"
+                />
+                <div className="flex justify-between text-[10px] text-slate-400 font-mono mt-1">
+                  <span>0.5x (Grave)</span>
+                  <span className="font-semibold text-indigo-600 dark:text-indigo-400">0.8x (Masculino recomendado)</span>
+                  <span>1.0x (Original)</span>
+                  <span>1.5x (Agudo)</span>
+                </div>
               </div>
             </div>
 
