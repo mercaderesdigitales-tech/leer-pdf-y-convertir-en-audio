@@ -1,11 +1,11 @@
 import React, { useState, useRef } from 'react';
-import { Upload, FileText, ShieldCheck, Zap, HardDrive, Smartphone } from 'lucide-react';
+import { Upload, FileText, ShieldCheck, Zap, Smartphone } from 'lucide-react';
 
 interface DropzoneProps {
   onFileSelected: (file: File) => void;
   isLoading: boolean;
   loadingProgress?: { current: number; total: number; stage: string };
-  onOpenGoogleDrive?: () => void;
+  onOpenUploadModal: () => void;
   onOpenInstallApp?: () => void;
 }
 
@@ -13,7 +13,7 @@ export const Dropzone: React.FC<DropzoneProps> = ({
   onFileSelected,
   isLoading,
   loadingProgress,
-  onOpenGoogleDrive,
+  onOpenUploadModal,
   onOpenInstallApp,
 }) => {
   const [isDragOver, setIsDragOver] = useState(false);
@@ -79,7 +79,7 @@ export const Dropzone: React.FC<DropzoneProps> = ({
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
-        onClick={() => !isLoading && fileInputRef.current?.click()}
+        onClick={() => !isLoading && onOpenUploadModal()}
         className={`relative border-2 border-dashed rounded-2xl p-6 sm:p-12 text-center transition-all cursor-pointer ${
           isDragOver
             ? 'border-indigo-500 bg-indigo-50/50 dark:bg-indigo-950/20 scale-[1.01]'
@@ -117,35 +117,21 @@ export const Dropzone: React.FC<DropzoneProps> = ({
               Arrastra y suelta tu archivo PDF aquí
             </h3>
             <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mb-6">
-              o selecciona desde tu dispositivo o tu Google Drive
+              o haz clic para elegir tu documento
             </p>
 
-            {/* Action buttons: Local PDF + Google Drive */}
-            <div className="flex flex-col sm:flex-row items-center justify-center gap-3 w-full max-w-sm sm:max-w-none">
+            {/* Single primary upload button */}
+            <div className="flex items-center justify-center w-full">
               <button
                 type="button"
                 onClick={(e) => {
                   e.stopPropagation();
-                  fileInputRef.current?.click();
+                  onOpenUploadModal();
                 }}
-                className="w-full sm:w-auto px-5 py-2.5 text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 rounded-xl shadow-xs transition-colors cursor-pointer text-center"
+                className="w-full sm:w-auto px-6 py-2.5 text-sm font-bold text-white bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 rounded-xl shadow-xs transition-colors cursor-pointer text-center"
               >
-                Seleccionar PDF del dispositivo
+                Subir PDF
               </button>
-
-              {onOpenGoogleDrive && (
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onOpenGoogleDrive();
-                  }}
-                  className="w-full sm:w-auto flex items-center justify-center gap-2 px-5 py-2.5 text-sm font-semibold text-slate-700 dark:text-slate-200 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 rounded-xl shadow-xs transition-colors cursor-pointer text-center"
-                >
-                  <HardDrive className="w-4 h-4 text-emerald-500" />
-                  <span>Subir desde Google Drive</span>
-                </button>
-              )}
             </div>
           </div>
         )}

@@ -16,10 +16,13 @@ const auth = getAuth(app);
 const provider = new GoogleAuthProvider();
 // Required Drive read-only scope for PDF selection and download
 provider.addScope('https://www.googleapis.com/auth/drive.readonly');
+provider.setCustomParameters({ prompt: 'select_account' });
 
-// In-memory token cache (DO NOT store in localStorage per security guidelines)
-let cachedAccessToken: string | null = null;
-let isSigningIn = false;
+export interface GoogleDriveUser {
+  displayName?: string | null;
+  email?: string | null;
+  photoURL?: string | null;
+}
 
 export interface DrivePDFItem {
   id: string;
@@ -30,42 +33,152 @@ export interface DrivePDFItem {
   iconLink?: string;
 }
 
+// In-memory token cache (DO NOT store in localStorage per security guidelines)
+let cachedAccessToken: string | null = null;
+let cachedUserInfo: GoogleDriveUser | null = null;
+let isSigningIn = false;
+
+/**
+ * Check if the app is currently running inside an iframe or preview frame
+ */
+export const isRunningInIframe = (): boolean => {
+  try {
+    return typeof window !== 'undefined' && window.self !== window.top;
+  } catch {
+    return true;
+  }
+};
+
 /**
  * Listen for auth state changes and manage cached token in memory.
  */
 export const initGoogleDriveAuth = (
-  onAuthSuccess?: (user: User, token: string) => void,
+  onAuthSuccess?: (user: GoogleDriveUser, token: string) => void,
   onAuthFailure?: () => void
 ) => {
   return onAuthStateChanged(auth, async (user: User | null) => {
-    if (user) {
-      if (cachedAccessToken) {
-        onAuthSuccess?.(user, cachedAccessToken);
-      } else if (!isSigningIn) {
-        cachedAccessToken = null;
-        onAuthFailure?.();
-      }
-    } else {
+    if (user && cachedAccessToken) {
+      onAuthSuccess?.(
+        {
+          displayName: user.displayName,
+          email: user.email,
+          photoURL: user.photoURL,
+        },
+        cachedAccessToken
+      );
+    } else if (cachedAccessToken && cachedUserInfo) {
+      onAuthSuccess?.(cachedUserInfo, cachedAccessToken);
+    } else if (!isSigningIn) {
       cachedAccessToken = null;
+      cachedUserInfo = null;
       onAuthFailure?.();
     }
   });
 };
 
 /**
- * Sign in with Google using popup and request Drive readonly scope
+ * Sign in using Google Identity Services (GIS) Token Client
  */
-export const signInWithGoogleDrive = async (): Promise<{ user: User; accessToken: string }> => {
-  try {
-    isSigningIn = true;
-    const result = await signInWithPopup(auth, provider);
-    const credential = GoogleAuthProvider.credentialFromResult(result);
-    if (!credential?.accessToken) {
-      throw new Error('No se pudo obtener el token de acceso de Google Drive');
+const signInWithGIS = (): Promise<{ user: GoogleDriveUser; accessToken: string }> => {
+  return new Promise((resolve, reject) => {
+    const google = (window as any).google;
+    if (!google?.accounts?.oauth2) {
+      return reject(new Error('Google Identity Services no está listo en el navegador.'));
     }
 
-    cachedAccessToken = credential.accessToken;
-    return { user: result.user, accessToken: cachedAccessToken };
+    const tokenClient = google.accounts.oauth2.initTokenClient({
+      client_id: firebaseConfig.oAuthClientId,
+      scope: 'https://www.googleapis.com/auth/drive.readonly https://www.googleapis.com/auth/userinfo.profile https://www.googleapis.com/auth/userinfo.email',
+      prompt: 'select_account',
+      callback: async (tokenResponse: any) => {
+        if (tokenResponse.error) {
+          return reject(new Error(tokenResponse.error_description || tokenResponse.error));
+        }
+        if (!tokenResponse.access_token) {
+          return reject(new Error('No se recibió token de acceso de Google'));
+        }
+
+        const token = tokenResponse.access_token;
+        cachedAccessToken = token;
+
+        // Fetch basic profile info
+        try {
+          const userRes = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+            headers: { Authorization: `Bearer ${token}` },
+          });
+          if (userRes.ok) {
+            const profile = await userRes.json();
+            cachedUserInfo = {
+              displayName: profile.name || profile.given_name,
+              email: profile.email,
+              photoURL: profile.picture,
+            };
+          }
+        } catch {
+          cachedUserInfo = { displayName: 'Usuario de Google', email: '' };
+        }
+
+        resolve({
+          user: cachedUserInfo || { displayName: 'Usuario de Google', email: '' },
+          accessToken: token,
+        });
+      },
+    });
+
+    tokenClient.requestAccessToken();
+  });
+};
+
+/**
+ * Sign in with Google using popup and request Drive readonly scope
+ */
+export const signInWithGoogleDrive = async (): Promise<{ user: GoogleDriveUser; accessToken: string }> => {
+  try {
+    isSigningIn = true;
+
+    // Try Firebase signInWithPopup first
+    try {
+      const result = await signInWithPopup(auth, provider);
+      const credential = GoogleAuthProvider.credentialFromResult(result);
+      if (!credential?.accessToken) {
+        throw new Error('No se pudo obtener el token de acceso de Google Drive');
+      }
+
+      cachedAccessToken = credential.accessToken;
+      const authedUser: GoogleDriveUser = {
+        displayName: result.user.displayName,
+        email: result.user.email,
+        photoURL: result.user.photoURL,
+      };
+      cachedUserInfo = authedUser;
+
+      return {
+        user: authedUser,
+        accessToken: cachedAccessToken,
+      };
+    } catch (fbError: any) {
+      console.warn('Firebase signInWithPopup failed, attempting Google Identity Services fallback...', fbError);
+
+      // If user cancelled, don't fall back, rethrow
+      if (fbError.code === 'auth/popup-closed-by-user') {
+        throw fbError;
+      }
+
+      // Check if Google Identity Services is available
+      const google = (window as any).google;
+      if (google?.accounts?.oauth2) {
+        return await signInWithGIS();
+      }
+
+      // If GIS not available or both failed, clarify error
+      if (fbError.code === 'auth/popup-blocked') {
+        throw new Error('La ventana emergente fue bloqueada por tu navegador. Por favor permite las ventanas emergentes para este sitio.');
+      } else if (fbError.code === 'auth/unauthorized-domain') {
+        throw new Error('Este dominio no está autorizado directamente en Firebase. Abre la app en una ventana nueva para continuar.');
+      }
+
+      throw fbError;
+    }
   } catch (error: any) {
     console.error('Google Sign In error:', error);
     throw error;
@@ -85,8 +198,13 @@ export const getDriveAccessToken = (): string | null => {
  * Sign out and clear in-memory credentials
  */
 export const signOutGoogleDrive = async (): Promise<void> => {
-  await firebaseSignOut(auth);
+  try {
+    await firebaseSignOut(auth);
+  } catch {
+    // ignore
+  }
   cachedAccessToken = null;
+  cachedUserInfo = null;
 };
 
 /**

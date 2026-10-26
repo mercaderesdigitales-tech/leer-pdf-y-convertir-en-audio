@@ -23,6 +23,7 @@ export class WebSpeechEngine {
   private volume: number = 1.0;
   private callbacks: WebSpeechCallbacks = {};
   private keepAliveTimer: number | null = null;
+  private onVoicesChangedListener?: (voices: VoiceOption[]) => void;
 
   constructor() {
     if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
@@ -30,11 +31,26 @@ export class WebSpeechEngine {
       this.loadVoices();
 
       // Ensure voiceschanged listener is bound cleanly across mobile browsers
+      const handleVoicesChanged = () => {
+        const v = this.loadVoices();
+        this.onVoicesChangedListener?.(v);
+      };
+
       if (typeof window.speechSynthesis.addEventListener === 'function') {
-        window.speechSynthesis.addEventListener('voiceschanged', () => this.loadVoices());
+        window.speechSynthesis.addEventListener('voiceschanged', handleVoicesChanged);
       } else if (this.synth.onvoiceschanged !== undefined) {
-        this.synth.onvoiceschanged = () => this.loadVoices();
+        this.synth.onvoiceschanged = handleVoicesChanged;
       }
+
+      // Proactive polling for mobile browsers (Chrome Android / Samsung Internet)
+      [100, 300, 600, 1200, 2500, 5000].forEach((delay) => {
+        setTimeout(() => {
+          const fresh = this.loadVoices();
+          if (fresh.length > 0) {
+            this.onVoicesChangedListener?.(fresh);
+          }
+        }, delay);
+      });
 
       // Restore saved voice preference from localStorage if available
       try {
@@ -45,6 +61,13 @@ export class WebSpeechEngine {
       } catch {
         // ignore
       }
+    }
+  }
+
+  public setOnVoicesChanged(cb: (voices: VoiceOption[]) => void) {
+    this.onVoicesChangedListener = cb;
+    if (this.voices.length > 0) {
+      cb(this.getVoices());
     }
   }
 

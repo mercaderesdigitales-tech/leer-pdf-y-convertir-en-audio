@@ -1,5 +1,5 @@
 import React from 'react';
-import { Volume2, Settings, Download, Sun, Moon, Sparkles, Zap, Home, HelpCircle, HardDrive, Smartphone } from 'lucide-react';
+import { Volume2, Settings, Download, Sun, Moon, Sparkles, Zap, Home, HelpCircle } from 'lucide-react';
 import { TTSEngineType } from '../types';
 import { PWAInstallButton } from './PWAInstallButton';
 
@@ -8,13 +8,12 @@ interface HeaderProps {
   onOpenSettings: () => void;
   onOpenExport: () => void;
   onOpenHowItWorks: () => void;
-  onOpenGoogleDrive: () => void;
   onOpenInstallApp: () => void;
   onGoHome: () => void;
   hasDocument: boolean;
   theme: 'light' | 'dark';
   onToggleTheme: () => void;
-  onOpenFilePicker: () => void;
+  onOpenUploadModal: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -22,13 +21,12 @@ export const Header: React.FC<HeaderProps> = ({
   onOpenSettings,
   onOpenExport,
   onOpenHowItWorks,
-  onOpenGoogleDrive,
   onOpenInstallApp,
   onGoHome,
   hasDocument,
   theme,
   onToggleTheme,
-  onOpenFilePicker,
+  onOpenUploadModal,
 }) => {
   return (
     <header className="sticky top-0 z-40 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 transition-colors">
@@ -81,15 +79,6 @@ export const Header: React.FC<HeaderProps> = ({
           </button>
 
           <button
-            onClick={onOpenGoogleDrive}
-            className="flex items-center gap-1.5 hover:text-slate-900 dark:hover:text-white transition-colors cursor-pointer whitespace-nowrap"
-            title="Abrir PDF desde Google Drive"
-          >
-            <HardDrive className="w-4 h-4 text-emerald-500" />
-            <span>Google Drive</span>
-          </button>
-
-          <button
             onClick={onOpenHowItWorks}
             className="flex items-center gap-1.5 hover:text-slate-900 dark:hover:text-white transition-colors cursor-pointer whitespace-nowrap"
           >
@@ -111,16 +100,6 @@ export const Header: React.FC<HeaderProps> = ({
               <Home className="w-4 h-4" />
             </button>
           )}
-
-          {/* Google Drive button in header */}
-          <button
-            onClick={onOpenGoogleDrive}
-            className="flex items-center gap-1 px-2 sm:px-2.5 py-1.5 text-xs font-semibold text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/50 hover:bg-emerald-100 dark:hover:bg-emerald-900/50 border border-emerald-200 dark:border-emerald-800/60 rounded-lg transition-colors cursor-pointer"
-            title="Importar documento desde Google Drive"
-          >
-            <HardDrive className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
-            <span className="hidden md:inline">Drive</span>
-          </button>
 
           {/* PWA Install Button */}
           <PWAInstallButton variant="header" />
@@ -157,13 +136,13 @@ export const Header: React.FC<HeaderProps> = ({
             </button>
           )}
 
-          {/* File Picker button */}
+          {/* Subir PDF button opens choice modal */}
           <button
-            onClick={onOpenFilePicker}
+            onClick={onOpenUploadModal}
             className="px-3 sm:px-3.5 py-1.5 text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 rounded-lg transition-colors shadow-xs whitespace-nowrap cursor-pointer"
           >
             <span className="hidden sm:inline">{hasDocument ? 'Cargar otro' : 'Subir PDF'}</span>
-            <span className="sm:hidden">PDF</span>
+            <span className="sm:hidden">Subir PDF</span>
           </button>
         </div>
       </div>

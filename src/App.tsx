@@ -34,8 +34,10 @@ import { HowItWorksModal } from './components/HowItWorksModal';
 import { ResumeDialog } from './components/ResumeDialog';
 import { GoogleDriveModal } from './components/GoogleDriveModal';
 import { InstallAppModal } from './components/InstallAppModal';
+import { UploadChoiceModal } from './components/UploadChoiceModal';
 
 export default function App() {
+  const [isUploadChoiceOpen, setIsUploadChoiceOpen] = useState<boolean>(false);
   // Theme state
   const [theme, setTheme] = useState<'light' | 'dark'>(() => {
     if (typeof window !== 'undefined') {
@@ -152,19 +154,18 @@ export default function App() {
     const ws = new WebSpeechEngine();
     webSpeechRef.current = ws;
 
-    const updateVoices = () => {
-      const v = ws.getVoices();
-      setWebVoices(v);
-      if (!selectedVoiceId && v.length > 0) {
-        const spanish = v.find((voice) => voice.lang.startsWith('es'));
-        const chosen = spanish ? spanish.id : v[0].id;
+    const handleNewVoices = (fresh: VoiceOption[]) => {
+      setWebVoices(fresh);
+      if (!selectedVoiceId && fresh.length > 0) {
+        const spanish = fresh.find((voice) => voice.lang.startsWith('es'));
+        const chosen = spanish ? spanish.id : fresh[0].id;
         setSelectedVoiceId(chosen);
         ws.setVoice(chosen);
       }
     };
 
-    updateVoices();
-    const timer = setTimeout(updateVoices, 300);
+    ws.setOnVoicesChanged(handleNewVoices);
+    handleNewVoices(ws.loadVoices());
 
     // Callbacks for WebSpeech
     ws.setCallbacks({
@@ -208,7 +209,6 @@ export default function App() {
     });
 
     return () => {
-      clearTimeout(timer);
       ws.stop();
       kokoroService.stop();
     };
@@ -561,13 +561,12 @@ export default function App() {
         onOpenSettings={() => setIsSettingsOpen(true)}
         onOpenExport={() => setIsExportOpen(true)}
         onOpenHowItWorks={() => setIsHowItWorksOpen(true)}
-        onOpenGoogleDrive={() => setIsGoogleDriveOpen(true)}
         onOpenInstallApp={() => setIsInstallAppOpen(true)}
         onGoHome={handleGoHome}
         hasDocument={Boolean(documentData)}
         theme={theme}
         onToggleTheme={toggleTheme}
-        onOpenFilePicker={() => fileInputRef.current?.click()}
+        onOpenUploadModal={() => setIsUploadChoiceOpen(true)}
       />
 
       {/* Main Content Area */}
@@ -579,7 +578,7 @@ export default function App() {
               onFileSelected={handleFileSelected}
               isLoading={isLoadingDocument}
               loadingProgress={loadingProgress}
-              onOpenGoogleDrive={() => setIsGoogleDriveOpen(true)}
+              onOpenUploadModal={() => setIsUploadChoiceOpen(true)}
               onOpenInstallApp={() => setIsInstallAppOpen(true)}
             />
 
@@ -684,6 +683,14 @@ export default function App() {
         onChangeCleaningOptions={(opts) => setCleaningOptions(opts)}
         kokoroProgress={kokoroProgress}
         onInitKokoro={() => kokoroService.initModel()}
+      />
+
+      {/* Upload Choice Modal: Select Local PDF or Google Drive */}
+      <UploadChoiceModal
+        isOpen={isUploadChoiceOpen}
+        onClose={() => setIsUploadChoiceOpen(false)}
+        onSelectLocal={() => fileInputRef.current?.click()}
+        onSelectGoogleDrive={() => setIsGoogleDriveOpen(true)}
       />
 
       {/* Google Drive PDF Import Modal */}

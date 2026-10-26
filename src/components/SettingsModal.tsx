@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, Sparkles, Zap, Sliders, Volume2, Gauge, Check, Cpu, Play, Volume1 } from 'lucide-react';
+import { X, Sparkles, Zap, Sliders, Volume2, Gauge, Check, Cpu, Play, Volume1, Search } from 'lucide-react';
 import { CleaningOptions, KokoroModelProgress, PageRange, TTSEngineType, VoiceOption } from '../types';
 
 interface SettingsModalProps {
@@ -49,7 +49,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   kokoroProgress,
   onInitKokoro,
 }) => {
-  const [langFilter, setLangFilter] = useState<'all' | 'es' | 'en' | 'other'>('es');
+  const [langFilter, setLangFilter] = useState<'all' | 'es' | 'en' | 'other'>('all');
+  const [voiceSearchQuery, setVoiceSearchQuery] = useState<string>('');
   const [isTestingVoice, setIsTestingVoice] = useState<boolean>(false);
 
   if (!isOpen) return null;
@@ -57,13 +58,38 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   // Filter voices according to current engine
   const engineVoices = voices.filter((v) => v.engine === engine);
 
-  // Apply language filter
-  const currentVoices = engineVoices.filter((v) => {
-    if (langFilter === 'all') return true;
+  // Counts for each tab
+  const countAll = engineVoices.length;
+  const countEs = engineVoices.filter((v) => (v.lang || '').toLowerCase().startsWith('es')).length;
+  const countEn = engineVoices.filter((v) => (v.lang || '').toLowerCase().startsWith('en')).length;
+  const countOther = engineVoices.filter((v) => {
     const l = (v.lang || '').toLowerCase();
-    if (langFilter === 'es') return l.startsWith('es');
-    if (langFilter === 'en') return l.startsWith('en');
     return !l.startsWith('es') && !l.startsWith('en');
+  }).length;
+
+  // Apply language filter and search query
+  const currentVoices = engineVoices.filter((v) => {
+    const l = (v.lang || '').toLowerCase();
+    const matchesLang =
+      langFilter === 'all'
+        ? true
+        : langFilter === 'es'
+        ? l.startsWith('es')
+        : langFilter === 'en'
+        ? l.startsWith('en')
+        : !l.startsWith('es') && !l.startsWith('en');
+
+    if (!matchesLang) return false;
+
+    if (voiceSearchQuery.trim()) {
+      const q = voiceSearchQuery.toLowerCase();
+      const nameMatch = v.name.toLowerCase().includes(q);
+      const langMatch = (v.lang || '').toLowerCase().includes(q);
+      const genderMatch = (v.gender || '').toLowerCase().includes(q);
+      return nameMatch || langMatch || genderMatch;
+    }
+
+    return true;
   });
 
   const selectedVoice = engineVoices.find((v) => v.id === selectedVoiceId) || engineVoices[0];
@@ -184,47 +210,86 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
           </div>
 
           {/* Section 2: Mobile-Optimized Voice Selector */}
-          <div className="space-y-2.5">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5">
-              <label className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-                Voz del Narrador ({engineVoices.length} disponibles)
-              </label>
+          <div className="space-y-3">
+            <div className="flex flex-col gap-2">
+              <div className="flex items-center justify-between">
+                <label className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                  Voz del Narrador
+                </label>
+                <span className="text-[11px] text-slate-400 font-medium">
+                  {currentVoices.length} de {engineVoices.length} disponibles
+                </span>
+              </div>
+
+              {/* Search input for instant voice lookup */}
+              <div className="relative">
+                <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                <input
+                  type="text"
+                  placeholder="Buscar voz por nombre o acento (ej. Google, Español, Jorge, Paulina...)"
+                  value={voiceSearchQuery}
+                  onChange={(e) => setVoiceSearchQuery(e.target.value)}
+                  className="w-full pl-8 pr-8 py-1.5 text-xs bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                />
+                {voiceSearchQuery && (
+                  <button
+                    type="button"
+                    onClick={() => setVoiceSearchQuery('')}
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 text-xs cursor-pointer"
+                  >
+                    ×
+                  </button>
+                )}
+              </div>
 
               {/* Language filter pills for quick discovery on mobile */}
-              <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800 p-0.5 rounded-lg text-[11px] self-start sm:self-auto">
-                <button
-                  type="button"
-                  onClick={() => setLangFilter('es')}
-                  className={`px-2 py-0.5 rounded-md font-medium transition-colors cursor-pointer ${
-                    langFilter === 'es'
-                      ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-300 shadow-xs'
-                      : 'text-slate-600 dark:text-slate-400'
-                  }`}
-                >
-                  Español
-                </button>
+              <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800 p-0.5 rounded-lg text-[11px] overflow-x-auto">
                 <button
                   type="button"
                   onClick={() => setLangFilter('all')}
-                  className={`px-2 py-0.5 rounded-md font-medium transition-colors cursor-pointer ${
+                  className={`px-2.5 py-1 rounded-md font-medium whitespace-nowrap transition-colors cursor-pointer ${
                     langFilter === 'all'
                       ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-300 shadow-xs'
-                      : 'text-slate-600 dark:text-slate-400'
+                      : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
                   }`}
                 >
-                  Todas
+                  Todas ({countAll})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setLangFilter('es')}
+                  className={`px-2.5 py-1 rounded-md font-medium whitespace-nowrap transition-colors cursor-pointer ${
+                    langFilter === 'es'
+                      ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-300 shadow-xs'
+                      : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                  }`}
+                >
+                  Español ({countEs})
                 </button>
                 <button
                   type="button"
                   onClick={() => setLangFilter('en')}
-                  className={`px-2 py-0.5 rounded-md font-medium transition-colors cursor-pointer ${
+                  className={`px-2.5 py-1 rounded-md font-medium whitespace-nowrap transition-colors cursor-pointer ${
                     langFilter === 'en'
                       ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-300 shadow-xs'
-                      : 'text-slate-600 dark:text-slate-400'
+                      : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
                   }`}
                 >
-                  Inglés
+                  Inglés ({countEn})
                 </button>
+                {countOther > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => setLangFilter('other')}
+                    className={`px-2.5 py-1 rounded-md font-medium whitespace-nowrap transition-colors cursor-pointer ${
+                      langFilter === 'other'
+                        ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-300 shadow-xs'
+                        : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                    }`}
+                  >
+                    Otros ({countOther})
+                  </button>
+                )}
               </div>
             </div>
 
@@ -232,13 +297,13 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-800 flex items-center justify-between gap-3">
               <div className="min-w-0 flex-1">
                 <span className="text-[10px] uppercase font-bold text-indigo-600 dark:text-indigo-400">
-                  Voz seleccionada:
+                  Voz activa seleccionada:
                 </span>
                 <p className="text-xs font-bold text-slate-900 dark:text-white truncate">
-                  {selectedVoice ? selectedVoice.name : 'Ninguna'}
+                  {selectedVoice ? selectedVoice.name : 'Ninguna seleccionada'}
                 </p>
-                <p className="text-[11px] text-slate-400">
-                  {selectedVoice?.lang} {selectedVoice?.gender ? `· ${selectedVoice.gender}` : ''}
+                <p className="text-[11px] text-slate-400 font-mono">
+                  {selectedVoice?.lang} {selectedVoice?.gender ? `· ${selectedVoice.gender}` : ''} {selectedVoice?.quality ? `· ${selectedVoice.quality}` : ''}
                 </p>
               </div>
 
@@ -250,15 +315,25 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 title="Probar cómo suena esta voz en tu dispositivo"
               >
                 <Volume1 className={`w-3.5 h-3.5 ${isTestingVoice ? 'animate-bounce' : ''}`} />
-                <span>{isTestingVoice ? 'Sonando...' : 'Probar voz'}</span>
+                <span>{isTestingVoice ? 'Sonando...' : 'Probar'}</span>
               </button>
             </div>
 
             {/* Mobile-friendly voice selection list */}
-            <div className="space-y-1.5 max-h-48 overflow-y-auto pr-1 border border-slate-200 dark:border-slate-800 rounded-xl p-1 bg-white dark:bg-slate-900">
+            <div className="space-y-1.5 max-h-56 overflow-y-auto pr-1 border border-slate-200 dark:border-slate-800 rounded-xl p-1 bg-white dark:bg-slate-900">
               {currentVoices.length === 0 ? (
-                <div className="py-6 text-center text-xs text-slate-400">
-                  No se encontraron voces para este filtro.
+                <div className="py-8 text-center text-xs text-slate-400 space-y-1">
+                  <p>No se encontraron voces con el filtro o búsqueda actual.</p>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setLangFilter('all');
+                      setVoiceSearchQuery('');
+                    }}
+                    className="text-indigo-600 dark:text-indigo-400 text-xs underline font-medium cursor-pointer"
+                  >
+                    Restablecer filtros y ver todas las voces
+                  </button>
                 </div>
               ) : (
                 currentVoices.map((v) => {
@@ -294,7 +369,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                           onSelectVoice(v.id);
                           handleTestVoice(v.id);
                         }}
-                        className="p-1 text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors cursor-pointer"
+                        className="p-1.5 text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded transition-colors cursor-pointer"
                         title="Probar esta voz"
                       >
                         <Play className="w-3 h-3" />

@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Search, FileText, Download, LogOut, RefreshCw, AlertCircle, HardDrive } from 'lucide-react';
-import { User } from 'firebase/auth';
+import { X, Search, FileText, Download, LogOut, RefreshCw, AlertCircle, HardDrive, ExternalLink } from 'lucide-react';
 import {
   initGoogleDriveAuth,
   signInWithGoogleDrive,
@@ -8,6 +7,8 @@ import {
   listDrivePDFs,
   downloadDrivePDF,
   DrivePDFItem,
+  GoogleDriveUser,
+  isRunningInIframe,
 } from '../services/googleDriveService';
 
 interface GoogleDriveModalProps {
@@ -21,7 +22,7 @@ export const GoogleDriveModal: React.FC<GoogleDriveModalProps> = ({
   onClose,
   onFileSelected,
 }) => {
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<GoogleDriveUser | null>(null);
   const [token, setToken] = useState<string | null>(null);
   const [isAuthenticating, setIsAuthenticating] = useState<boolean>(false);
   const [authError, setAuthError] = useState<string | null>(null);
@@ -166,15 +167,25 @@ export const GoogleDriveModal: React.FC<GoogleDriveModalProps> = ({
         <div className="p-6 overflow-y-auto flex-1 flex flex-col min-h-0">
           {/* Error notification if any */}
           {authError && (
-            <div className="mb-4 p-3 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800/60 flex items-start gap-2.5 text-rose-800 dark:text-rose-300 text-xs">
-              <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
-              <div className="flex-1">{authError}</div>
+            <div className="mb-4 p-3 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800/60 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 text-rose-800 dark:text-rose-300 text-xs">
+              <div className="flex items-start gap-2">
+                <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+                <div className="flex-1">{authError}</div>
+              </div>
+              <button
+                type="button"
+                onClick={() => window.open(window.location.href, '_blank')}
+                className="self-end sm:self-auto shrink-0 inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-rose-600 hover:bg-rose-700 text-white text-[11px] font-medium transition-colors cursor-pointer"
+              >
+                <ExternalLink className="w-3 h-3" />
+                <span>Abrir en ventana nueva</span>
+              </button>
             </div>
           )}
 
           {!user || !token ? (
             /* Unauthenticated state: Official Sign in with Google Button */
-            <div className="flex flex-col items-center justify-center py-10 px-4 text-center my-auto">
+            <div className="flex flex-col items-center justify-center py-8 px-4 text-center my-auto">
               <div className="w-16 h-16 rounded-2xl bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400 flex items-center justify-center mb-4">
                 <HardDrive className="w-8 h-8" />
               </div>
@@ -200,6 +211,22 @@ export const GoogleDriveModal: React.FC<GoogleDriveModalProps> = ({
                 </svg>
                 <span>{isAuthenticating ? 'Conectando...' : 'Iniciar sesión con Google'}</span>
               </button>
+
+              {isRunningInIframe() && (
+                <div className="mt-6 p-3.5 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/60 flex flex-col items-center gap-2 text-center max-w-md">
+                  <p className="text-[11px] text-amber-800 dark:text-amber-300 leading-relaxed">
+                    <strong>¿Estás en un móvil o visor integrado?</strong> Los navegadores bloquean ventanas de Google dentro de iframes. Si no abre el login, usa el botón directo:
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => window.open(window.location.href, '_blank')}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-600 hover:bg-amber-700 text-white text-xs font-semibold shadow-xs transition-colors cursor-pointer"
+                  >
+                    <ExternalLink className="w-3.5 h-3.5" />
+                    <span>Abrir en navegador completo</span>
+                  </button>
+                </div>
+              )}
             </div>
           ) : (
             /* Authenticated state: User header + Search input + PDF File list */

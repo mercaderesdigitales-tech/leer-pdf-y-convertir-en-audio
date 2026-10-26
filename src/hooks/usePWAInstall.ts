@@ -10,6 +10,8 @@ export function usePWAInstall() {
   const [isInstalled, setIsInstalled] = useState<boolean>(false);
   const [isIOS, setIsIOS] = useState<boolean>(false);
   const [isAndroid, setIsAndroid] = useState<boolean>(false);
+  const [isInIframe, setIsInIframe] = useState<boolean>(false);
+  const [isInAppBrowser, setIsInAppBrowser] = useState<boolean>(false);
 
   useEffect(() => {
     // Check if running in standalone mode (already installed)
@@ -18,12 +20,21 @@ export function usePWAInstall() {
       (window.navigator as unknown as { standalone?: boolean }).standalone === true;
     setIsInstalled(isStandalone);
 
-    // Detect mobile OS
+    // Check if running inside an iframe or preview frame
+    try {
+      setIsInIframe(window.self !== window.top);
+    } catch {
+      setIsInIframe(true);
+    }
+
+    // Detect mobile OS & in-app webview
     const userAgent = window.navigator.userAgent.toLowerCase();
     const isIOSDevice = /iphone|ipad|ipod/.test(userAgent);
     const isAndroidDevice = /android/.test(userAgent);
+    const inApp = /fban|fbav|instagram|whatsapp|telegram|line|crios/.test(userAgent);
     setIsIOS(isIOSDevice);
     setIsAndroid(isAndroidDevice);
+    setIsInAppBrowser(inApp);
 
     const handleBeforeInstallPrompt = (e: Event) => {
       e.preventDefault();
@@ -65,6 +76,8 @@ export function usePWAInstall() {
     isInstalled,
     isIOS,
     isAndroid,
+    isInIframe,
+    isInAppBrowser,
     install,
   };
 }
