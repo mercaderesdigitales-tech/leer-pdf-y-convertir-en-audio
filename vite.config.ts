@@ -1,11 +1,28 @@
 import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
 import path from 'path';
-import {defineConfig} from 'vite';
+import fs from 'fs';
+import {defineConfig, Plugin} from 'vite';
+
+function mespeakEncodingPlugin(): Plugin {
+  return {
+    name: 'mespeak-encoding-fix',
+    load(id) {
+      if (id.includes('ESpeak.js')) {
+        try {
+          return fs.readFileSync(id, 'latin1');
+        } catch {
+          return null;
+        }
+      }
+      return null;
+    },
+  };
+}
 
 export default defineConfig(() => {
   return {
-    plugins: [react(), tailwindcss()],
+    plugins: [mespeakEncodingPlugin(), react(), tailwindcss()],
     resolve: {
       alias: {
         '@': path.resolve(import.meta.dirname || process.cwd(), '.'),

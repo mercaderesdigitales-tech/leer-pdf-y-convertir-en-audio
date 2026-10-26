@@ -673,6 +673,8 @@ export default function App() {
           allSentences={documentData.allSentences}
           pageRange={pageRange}
           totalPages={documentData.totalPages}
+          activeVoiceName={allVoices.find((v) => v.id === selectedVoiceId)?.name || 'Voz del navegador (Web Speech)'}
+          activeEngine={engine}
         />
       )}
     </div>

@@ -9,18 +9,19 @@
     "start": "node server.js",
     "preview": "vite preview",
     "clean": "rm -rf dist",
-    "lint": "tsc --noEmit"
+    "lint": "tsc --noEmit",
+    "postinstall": "node scripts/fix-encoding.cjs"
   },
   "dependencies": {
     "@breezystack/lamejs": "^1.2.7",
     "@google/genai": "^2.4.0",
-    "@mintplex-labs/piper-tts-web": "^1.0.5",
     "@tailwindcss/vite": "^4.3.3",
     "@vitejs/plugin-react": "^6.1.1",
     "dotenv": "^17.2.3",
     "express": "^4.21.2",
     "kokoro-js": "^1.2.1",
     "lucide-react": "^0.546.0",
+    "mespeak": "^2.0.2",
     "motion": "^12.23.24",
     "pdfjs-dist": "^6.4.299",
     "react": "^19.0.1",
