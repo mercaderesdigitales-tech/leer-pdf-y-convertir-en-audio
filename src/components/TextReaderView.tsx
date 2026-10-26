@@ -87,7 +87,7 @@ export const TextReaderView: React.FC<TextReaderViewProps> = ({
     <div
       ref={containerRef}
       onMouseUp={handleMouseUp}
-      className="w-full max-w-5xl mx-auto px-4 py-6 relative"
+      className="w-full max-w-5xl mx-auto px-3 sm:px-4 pt-4 sm:pt-6 pb-36 sm:pb-32 relative"
     >
       {/* Floating Action Button when text is marked with mouse */}
       {floatingAction && (

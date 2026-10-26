@@ -12,6 +12,7 @@ export class WebSpeechEngine {
   private synth: SpeechSynthesis | null = null;
   private currentUtterance: SpeechSynthesisUtterance | null = null;
   private voices: SpeechSynthesisVoice[] = [];
+  private selectedVoiceId: string = '';
   private selectedVoice: SpeechSynthesisVoice | null = null;
   private sentences: SentenceItem[] = [];
   private currentIndex: number = 0;
@@ -27,8 +28,22 @@ export class WebSpeechEngine {
     if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
       this.synth = window.speechSynthesis;
       this.loadVoices();
-      if (this.synth.onvoiceschanged !== undefined) {
+
+      // Ensure voiceschanged listener is bound cleanly across mobile browsers
+      if (typeof window.speechSynthesis.addEventListener === 'function') {
+        window.speechSynthesis.addEventListener('voiceschanged', () => this.loadVoices());
+      } else if (this.synth.onvoiceschanged !== undefined) {
         this.synth.onvoiceschanged = () => this.loadVoices();
+      }
+
+      // Restore saved voice preference from localStorage if available
+      try {
+        const savedVoiceId = localStorage.getItem('vozpdf_voice');
+        if (savedVoiceId) {
+          this.selectedVoiceId = savedVoiceId;
+        }
+      } catch {
+        // ignore
       }
     }
   }
@@ -39,21 +54,35 @@ export class WebSpeechEngine {
 
   public loadVoices(): VoiceOption[] {
     if (!this.synth) return [];
-    this.voices = this.synth.getVoices();
 
-    const voiceOptions: VoiceOption[] = this.voices.map(v => ({
-      id: v.voiceURI || v.name,
-      name: v.name,
-      lang: v.lang,
-      engine: 'webspeech',
-      gender: v.name.toLowerCase().includes('female') || v.name.toLowerCase().includes('mujer') ? 'Femenino' : 'Masculino',
-      quality: v.localService ? 'Nativa / Local' : 'Online',
-    }));
+    const fresh = this.synth.getVoices();
+    if (fresh && fresh.length > 0) {
+      this.voices = fresh;
+    }
 
-    // Auto-select preferred Spanish voice if none selected
-    if (!this.selectedVoice && this.voices.length > 0) {
-      const spanishVoice = this.voices.find(v => v.lang.startsWith('es-ES') || v.lang.startsWith('es'));
+    const voiceOptions: VoiceOption[] = this.voices.map((v) => {
+      const id = v.voiceURI || v.name;
+      const lower = v.name.toLowerCase();
+      const isFemale = lower.includes('female') || lower.includes('mujer') || lower.includes('sabina') || lower.includes('monica') || lower.includes('paulina');
+      return {
+        id,
+        name: v.name,
+        lang: v.lang,
+        engine: 'webspeech',
+        gender: isFemale ? 'Femenino' : 'Masculino',
+        quality: v.localService ? 'Nativa / Local' : 'Online',
+      };
+    });
+
+    // Re-resolve selected voice with fresh references
+    if (this.selectedVoiceId) {
+      this.resolveAndSetVoice(this.selectedVoiceId);
+    } else if (this.voices.length > 0) {
+      const spanishVoice = this.voices.find(
+        (v) => v.lang.startsWith('es-ES') || v.lang.startsWith('es')
+      );
       this.selectedVoice = spanishVoice || this.voices[0];
+      this.selectedVoiceId = this.selectedVoice.voiceURI || this.selectedVoice.name;
     }
 
     return voiceOptions;
@@ -63,19 +92,72 @@ export class WebSpeechEngine {
     return this.loadVoices();
   }
 
-  public setVoice(voiceId: string) {
-    const found = this.voices.find(v => (v.voiceURI || v.name) === voiceId);
+  private resolveAndSetVoice(voiceId: string): boolean {
+    if (!this.synth) return false;
+    // Always query fresh voices in case mobile browser loaded voices dynamically
+    const currentList = this.synth.getVoices();
+    if (currentList.length > 0) {
+      this.voices = currentList;
+    }
+
+    // Try multiple matching strategies for mobile Android/iOS voice IDs
+    const found =
+      this.voices.find((v) => v.voiceURI === voiceId) ||
+      this.voices.find((v) => v.name === voiceId) ||
+      this.voices.find((v) => (v.voiceURI || v.name).toLowerCase() === voiceId.toLowerCase()) ||
+      this.voices.find((v) => v.lang && voiceId.startsWith(v.lang));
+
     if (found) {
       this.selectedVoice = found;
-      // If currently playing, restart current sentence with the new voice
-      if (this.isPlaying && !this.isPaused) {
-        this.speakCurrentSentence();
-      }
+      this.selectedVoiceId = found.voiceURI || found.name;
+      return true;
+    }
+
+    return false;
+  }
+
+  public setVoice(voiceId: string) {
+    this.selectedVoiceId = voiceId;
+    try {
+      localStorage.setItem('vozpdf_voice', voiceId);
+    } catch {
+      // ignore
+    }
+
+    this.resolveAndSetVoice(voiceId);
+
+    // If currently playing, restart immediately with new voice on mobile
+    if (this.isPlaying && !this.isPaused) {
+      this.speakCurrentSentence();
     }
   }
 
   public getSelectedVoiceId(): string {
-    return this.selectedVoice ? (this.selectedVoice.voiceURI || this.selectedVoice.name) : '';
+    return this.selectedVoiceId;
+  }
+
+  public testVoice(voiceId: string, testPhrase: string = 'Hola, esta es una prueba de voz para la lectura de documentos.') {
+    if (!this.synth) return;
+    this.setVoice(voiceId);
+    this.synth.cancel();
+
+    const utterance = new SpeechSynthesisUtterance(testPhrase);
+    // Find fresh voice reference
+    const freshList = this.synth.getVoices();
+    const voice = freshList.find((v) => (v.voiceURI || v.name) === voiceId) || this.selectedVoice;
+
+    if (voice) {
+      utterance.voice = voice;
+      utterance.lang = voice.lang;
+    }
+    utterance.rate = this.speed;
+    utterance.pitch = this.pitch;
+    utterance.volume = this.volume;
+
+    // Mobile garbage-collection guard
+    (window as any).__vozpdf_test_utterance = utterance;
+
+    this.synth.speak(utterance);
   }
 
   public setSpeed(speed: number) {
@@ -161,6 +243,7 @@ export class WebSpeechEngine {
     this.isPlaying = false;
     this.isPaused = false;
     this.currentUtterance = null;
+    (window as any).__vozpdf_active_utterance = null;
   }
 
   public nextSentence() {
@@ -218,10 +301,25 @@ export class WebSpeechEngine {
     const sentence = this.sentences[this.currentIndex];
     const utterance = new SpeechSynthesisUtterance(sentence.text);
 
-    if (this.selectedVoice) {
-      utterance.voice = this.selectedVoice;
-      utterance.lang = this.selectedVoice.lang;
+    // Ensure freshest voice object from browser for Android Chrome / iOS
+    const freshVoices = this.synth.getVoices();
+    let voiceToUse = this.selectedVoice;
+
+    if (freshVoices.length > 0 && this.selectedVoiceId) {
+      const match =
+        freshVoices.find((v) => v.voiceURI === this.selectedVoiceId) ||
+        freshVoices.find((v) => v.name === this.selectedVoiceId);
+      if (match) {
+        voiceToUse = match;
+        this.selectedVoice = match;
+      }
     }
+
+    if (voiceToUse) {
+      utterance.voice = voiceToUse;
+      utterance.lang = voiceToUse.lang;
+    }
+
     utterance.rate = this.speed;
     utterance.pitch = this.pitch;
     utterance.volume = this.volume;
@@ -259,10 +357,13 @@ export class WebSpeechEngine {
     };
 
     this.currentUtterance = utterance;
+    // Prevent garbage collection on mobile browsers
+    (window as any).__vozpdf_active_utterance = utterance;
+
     this.synth.speak(utterance);
   }
 
-  // Workaround for Chrome bug where long speech freezes after 15 seconds
+  // Workaround for Chrome/Android bug where speech freezes after 10-15 seconds
   private startKeepAlive() {
     this.clearKeepAlive();
     this.keepAliveTimer = window.setInterval(() => {

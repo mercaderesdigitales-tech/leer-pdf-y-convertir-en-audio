@@ -32,6 +32,8 @@ import { ScannedAlert } from './components/ScannedAlert';
 import { HistoryList } from './components/HistoryList';
 import { HowItWorksModal } from './components/HowItWorksModal';
 import { ResumeDialog } from './components/ResumeDialog';
+import { GoogleDriveModal } from './components/GoogleDriveModal';
+import { InstallAppModal } from './components/InstallAppModal';
 
 export default function App() {
   // Theme state
@@ -128,6 +130,8 @@ export default function App() {
   const [isSettingsOpen, setIsSettingsOpen] = useState<boolean>(false);
   const [isExportOpen, setIsExportOpen] = useState<boolean>(false);
   const [isHowItWorksOpen, setIsHowItWorksOpen] = useState<boolean>(false);
+  const [isGoogleDriveOpen, setIsGoogleDriveOpen] = useState<boolean>(false);
+  const [isInstallAppOpen, setIsInstallAppOpen] = useState<boolean>(false);
 
   // Engines instances
   const webSpeechRef = useRef<WebSpeechEngine | null>(null);
@@ -269,6 +273,19 @@ export default function App() {
       webSpeechRef.current?.setVoice(voiceId);
     } else {
       kokoroService.setVoice(voiceId);
+    }
+  };
+
+  // Test voice sample (essential for mobile audio activation and verification)
+  const handleTestVoice = (voiceId: string) => {
+    if (engine === 'webspeech') {
+      webSpeechRef.current?.testVoice(voiceId);
+    } else {
+      kokoroService.setVoice(voiceId);
+      // Play a short sample
+      if (documentData && documentData.allSentences.length > 0) {
+        kokoroService.play(currentSentenceIndex);
+      }
     }
   };
 
@@ -544,6 +561,8 @@ export default function App() {
         onOpenSettings={() => setIsSettingsOpen(true)}
         onOpenExport={() => setIsExportOpen(true)}
         onOpenHowItWorks={() => setIsHowItWorksOpen(true)}
+        onOpenGoogleDrive={() => setIsGoogleDriveOpen(true)}
+        onOpenInstallApp={() => setIsInstallAppOpen(true)}
         onGoHome={handleGoHome}
         hasDocument={Boolean(documentData)}
         theme={theme}
@@ -560,6 +579,8 @@ export default function App() {
               onFileSelected={handleFileSelected}
               isLoading={isLoadingDocument}
               loadingProgress={loadingProgress}
+              onOpenGoogleDrive={() => setIsGoogleDriveOpen(true)}
+              onOpenInstallApp={() => setIsInstallAppOpen(true)}
             />
 
             {/* Visible History of recent PDFs */}
@@ -640,7 +661,7 @@ export default function App() {
         onClose={() => setIsHowItWorksOpen(false)}
       />
 
-      {/* Settings Modal */}
+      {/* Settings Modal with mobile voice tester */}
       <SettingsModal
         isOpen={isSettingsOpen}
         onClose={() => setIsSettingsOpen(false)}
@@ -649,6 +670,7 @@ export default function App() {
         voices={allVoices}
         selectedVoiceId={selectedVoiceId}
         onSelectVoice={handleSelectVoice}
+        onTestVoice={handleTestVoice}
         speed={speed}
         onChangeSpeed={(s) => setSpeed(s)}
         volume={volume}
@@ -662,6 +684,19 @@ export default function App() {
         onChangeCleaningOptions={(opts) => setCleaningOptions(opts)}
         kokoroProgress={kokoroProgress}
         onInitKokoro={() => kokoroService.initModel()}
+      />
+
+      {/* Google Drive PDF Import Modal */}
+      <GoogleDriveModal
+        isOpen={isGoogleDriveOpen}
+        onClose={() => setIsGoogleDriveOpen(false)}
+        onFileSelected={handleFileSelected}
+      />
+
+      {/* PWA & Native WebAPK App Installer Modal */}
+      <InstallAppModal
+        isOpen={isInstallAppOpen}
+        onClose={() => setIsInstallAppOpen(false)}
       />
 
       {/* Audio Export Modal */}
