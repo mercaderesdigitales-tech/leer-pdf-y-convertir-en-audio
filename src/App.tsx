@@ -36,15 +36,20 @@ import { GoogleDriveModal } from './components/GoogleDriveModal';
 import { InstallAppModal } from './components/InstallAppModal';
 import { UploadChoiceModal } from './components/UploadChoiceModal';
 import { MobileBottomNav } from './components/MobileBottomNav';
+import { safeStorage } from './services/storageHelper';
 
 export default function App() {
   const [isUploadChoiceOpen, setIsUploadChoiceOpen] = useState<boolean>(false);
   // Theme state
   const [theme, setTheme] = useState<'light' | 'dark'>(() => {
-    if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('vozpdf_theme');
-      if (saved === 'dark' || saved === 'light') return saved;
-      return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+    const saved = safeStorage.getItem('vozpdf_theme');
+    if (saved === 'dark' || saved === 'light') return saved;
+    try {
+      if (typeof window !== 'undefined' && window.matchMedia) {
+        return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+      }
+    } catch {
+      // ignore
     }
     return 'light';
   });
@@ -57,7 +62,7 @@ export default function App() {
     } else {
       root.classList.remove('dark');
     }
-    localStorage.setItem('vozpdf_theme', theme);
+    safeStorage.setItem('vozpdf_theme', theme);
   }, [theme]);
 
   const toggleTheme = () => {
@@ -86,27 +91,31 @@ export default function App() {
 
   // Settings & Preferences
   const [engine, setEngine] = useState<TTSEngineType>(() => {
-    return (localStorage.getItem('vozpdf_engine') as TTSEngineType) || 'webspeech';
+    return (safeStorage.getItem('vozpdf_engine') as TTSEngineType) || 'webspeech';
   });
 
   const [speed, setSpeed] = useState<number>(() => {
-    const saved = localStorage.getItem('vozpdf_speed');
+    const saved = safeStorage.getItem('vozpdf_speed');
     return saved ? parseFloat(saved) : 1.0;
   });
 
   const [volume, setVolume] = useState<number>(() => {
-    const saved = localStorage.getItem('vozpdf_volume');
+    const saved = safeStorage.getItem('vozpdf_volume');
     return saved ? parseFloat(saved) : 1.0;
   });
 
   const [pitch, setPitch] = useState<number>(() => {
-    const saved = localStorage.getItem('vozpdf_pitch');
+    const saved = safeStorage.getItem('vozpdf_pitch');
     return saved ? parseFloat(saved) : 1.0;
   });
 
   const [cleaningOptions, setCleaningOptions] = useState<CleaningOptions>(() => {
-    const saved = localStorage.getItem('vozpdf_cleaning');
-    return saved ? JSON.parse(saved) : DEFAULT_CLEANING_OPTIONS;
+    try {
+      const saved = safeStorage.getItem('vozpdf_cleaning');
+      return saved ? JSON.parse(saved) : DEFAULT_CLEANING_OPTIONS;
+    } catch {
+      return DEFAULT_CLEANING_OPTIONS;
+    }
   });
 
   const [pageRange, setPageRange] = useState<PageRange>({ start: 1, end: 1 });
@@ -120,7 +129,7 @@ export default function App() {
   // Voices state
   const [webVoices, setWebVoices] = useState<VoiceOption[]>([]);
   const [selectedVoiceId, setSelectedVoiceId] = useState<string>(() => {
-    return localStorage.getItem('vozpdf_voice') || '';
+    return safeStorage.getItem('vozpdf_voice') || '';
   });
 
   // Kokoro model progress
@@ -156,9 +165,9 @@ export default function App() {
     webSpeechRef.current = ws;
 
     const handleNewVoices = (fresh: VoiceOption[]) => {
-      setWebVoices(fresh);
-      if (!selectedVoiceId && fresh.length > 0) {
-        const spanish = fresh.find((voice) => voice.lang.startsWith('es'));
+      setWebVoices(fresh || []);
+      if (!selectedVoiceId && fresh && fresh.length > 0) {
+        const spanish = fresh.find((voice) => (voice.lang || '').startsWith('es'));
         const chosen = spanish ? spanish.id : fresh[0].id;
         setSelectedVoiceId(chosen);
         ws.setVoice(chosen);
@@ -244,32 +253,32 @@ export default function App() {
   useEffect(() => {
     webSpeechRef.current?.setSpeed(speed);
     kokoroService.setSpeed(speed);
-    localStorage.setItem('vozpdf_speed', speed.toString());
+    safeStorage.setItem('vozpdf_speed', speed.toString());
   }, [speed]);
 
   useEffect(() => {
     webSpeechRef.current?.setVolume(volume);
     kokoroService.setVolume(volume);
-    localStorage.setItem('vozpdf_volume', volume.toString());
+    safeStorage.setItem('vozpdf_volume', volume.toString());
   }, [volume]);
 
   useEffect(() => {
     webSpeechRef.current?.setPitch(pitch);
-    localStorage.setItem('vozpdf_pitch', pitch.toString());
+    safeStorage.setItem('vozpdf_pitch', pitch.toString());
   }, [pitch]);
 
   useEffect(() => {
-    localStorage.setItem('vozpdf_engine', engine);
+    safeStorage.setItem('vozpdf_engine', engine);
   }, [engine]);
 
   useEffect(() => {
-    localStorage.setItem('vozpdf_cleaning', JSON.stringify(cleaningOptions));
+    safeStorage.setItem('vozpdf_cleaning', JSON.stringify(cleaningOptions));
   }, [cleaningOptions]);
 
   // Handle voice selection
   const handleSelectVoice = (voiceId: string) => {
     setSelectedVoiceId(voiceId);
-    localStorage.setItem('vozpdf_voice', voiceId);
+    safeStorage.setItem('vozpdf_voice', voiceId);
     if (engine === 'webspeech') {
       webSpeechRef.current?.setVoice(voiceId);
     } else {
@@ -313,7 +322,7 @@ export default function App() {
         kokoroService.play(activeIndex);
       }
     } else {
-      const defaultWeb = webVoices.find((v) => v.lang.startsWith('es'))?.id || webVoices[0]?.id || '';
+      const defaultWeb = webVoices.find((v) => (v.lang || '').startsWith('es'))?.id || webVoices[0]?.id || '';
       setSelectedVoiceId(defaultWeb);
       webSpeechRef.current?.setVoice(defaultWeb);
       if (wasPlaying && documentData) {

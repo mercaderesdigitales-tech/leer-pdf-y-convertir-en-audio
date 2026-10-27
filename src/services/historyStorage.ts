@@ -19,30 +19,38 @@ interface StoredDocumentRecord {
   documentData: PDFDocumentData;
 }
 
-export function generateDocId(name: string, fileSize: number, totalPages: number): string {
-  // Simple deterministic key based on name, size and pages
-  return `${name.trim().toLowerCase()}_${fileSize}_${totalPages}`;
+export function generateDocId(name: string = '', fileSize: number = 0, totalPages: number = 0): string {
+  const safeName = (typeof name === 'string' ? name : String(name || '')).trim().toLowerCase();
+  return `${safeName}_${fileSize || 0}_${totalPages || 0}`;
 }
 
 function openDatabase(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
-    if (typeof window === 'undefined' || !window.indexedDB) {
-      reject(new Error('IndexedDB no soportado en este entorno'));
-      return;
-    }
-
-    const request = indexedDB.open(DB_NAME, DB_VERSION);
-
-    request.onupgradeneeded = (event) => {
-      const db = (event.target as IDBOpenDBRequest).result;
-      if (!db.objectStoreNames.contains(STORE_NAME)) {
-        const store = db.createObjectStore(STORE_NAME, { keyPath: 'id' });
-        store.createIndex('lastReadTimestamp', 'lastReadTimestamp', { unique: false });
+    try {
+      if (typeof window === 'undefined' || !window.indexedDB) {
+        reject(new Error('IndexedDB no soportado en este entorno'));
+        return;
       }
-    };
 
-    request.onsuccess = () => resolve(request.result);
-    request.onerror = () => reject(request.error);
+      const request = indexedDB.open(DB_NAME, DB_VERSION);
+
+      request.onupgradeneeded = (event) => {
+        try {
+          const db = (event.target as IDBOpenDBRequest).result;
+          if (!db.objectStoreNames.contains(STORE_NAME)) {
+            const store = db.createObjectStore(STORE_NAME, { keyPath: 'id' });
+            store.createIndex('lastReadTimestamp', 'lastReadTimestamp', { unique: false });
+          }
+        } catch (e) {
+          console.warn('Error en upgradeneeded IndexedDB:', e);
+        }
+      };
+
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error);
+    } catch (err) {
+      reject(err);
+    }
   });
 }
 

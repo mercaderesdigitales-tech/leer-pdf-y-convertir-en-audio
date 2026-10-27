@@ -41,8 +41,10 @@ export async function extractPDFData(
     const meta = await pdfDoc.getMetadata();
     if (meta?.info) {
       const info = meta.info as Record<string, any>;
-      author = (info.Author || info.Creator || info.Producer || '').trim();
-      creationDate = (info.CreationDate || info.ModDate || '').trim();
+      const rawAuthor = info.Author || info.Creator || info.Producer || '';
+      author = typeof rawAuthor === 'string' ? rawAuthor.trim() : String(rawAuthor || '').trim();
+      const rawDate = info.CreationDate || info.ModDate || '';
+      creationDate = typeof rawDate === 'string' ? rawDate.trim() : String(rawDate || '').trim();
     }
   } catch {
     // ignore

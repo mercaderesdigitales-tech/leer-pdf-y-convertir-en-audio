@@ -14,27 +14,36 @@ export function usePWAInstall() {
   const [isInAppBrowser, setIsInAppBrowser] = useState<boolean>(false);
 
   useEffect(() => {
-    // Check if running in standalone mode (already installed)
-    const isStandalone =
-      window.matchMedia('(display-mode: standalone)').matches ||
-      (window.navigator as unknown as { standalone?: boolean }).standalone === true;
-    setIsInstalled(isStandalone);
-
-    // Check if running inside an iframe or preview frame
     try {
-      setIsInIframe(window.self !== window.top);
-    } catch {
-      setIsInIframe(true);
-    }
+      // Check if running in standalone mode (already installed)
+      const isStandalone =
+        (typeof window !== 'undefined' &&
+          window.matchMedia &&
+          window.matchMedia('(display-mode: standalone)').matches) ||
+        (typeof window !== 'undefined' &&
+          (window.navigator as unknown as { standalone?: boolean })?.standalone === true);
+      setIsInstalled(!!isStandalone);
 
-    // Detect mobile OS & in-app webview
-    const userAgent = window.navigator.userAgent.toLowerCase();
-    const isIOSDevice = /iphone|ipad|ipod/.test(userAgent);
-    const isAndroidDevice = /android/.test(userAgent);
-    const inApp = /fban|fbav|instagram|whatsapp|telegram|line|crios/.test(userAgent);
-    setIsIOS(isIOSDevice);
-    setIsAndroid(isAndroidDevice);
-    setIsInAppBrowser(inApp);
+      // Check if running inside an iframe or preview frame
+      try {
+        setIsInIframe(window.self !== window.top);
+      } catch {
+        setIsInIframe(true);
+      }
+
+      // Detect mobile OS & in-app webview
+      const userAgent = (typeof navigator !== 'undefined' && navigator.userAgent)
+        ? navigator.userAgent.toLowerCase()
+        : '';
+      const isIOSDevice = /iphone|ipad|ipod/.test(userAgent);
+      const isAndroidDevice = /android/.test(userAgent);
+      const inApp = /fban|fbav|instagram|whatsapp|telegram|line|crios/.test(userAgent);
+      setIsIOS(isIOSDevice);
+      setIsAndroid(isAndroidDevice);
+      setIsInAppBrowser(inApp);
+    } catch {
+      // ignore
+    }
 
     const handleBeforeInstallPrompt = (e: Event) => {
       e.preventDefault();

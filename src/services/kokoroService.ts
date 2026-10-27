@@ -51,18 +51,26 @@ export class KokoroService {
   private timeUpdateInterval: number | null = null;
 
   constructor() {
-    this.initAudioContext();
+    try {
+      this.initAudioContext();
+    } catch {
+      // AudioContext will be initialized on first user interaction / playback
+    }
   }
 
   private initAudioContext() {
-    if (typeof window !== 'undefined' && !this.audioCtx) {
-      const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
-      if (AudioCtx) {
-        this.audioCtx = new AudioCtx();
-        this.gainNode = this.audioCtx.createGain();
-        this.gainNode.gain.value = this.volume;
-        this.gainNode.connect(this.audioCtx.destination);
+    try {
+      if (typeof window !== 'undefined' && !this.audioCtx) {
+        const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
+        if (AudioCtx) {
+          this.audioCtx = new AudioCtx();
+          this.gainNode = this.audioCtx.createGain();
+          this.gainNode.gain.value = this.volume;
+          this.gainNode.connect(this.audioCtx.destination);
+        }
       }
+    } catch (e) {
+      console.warn('AudioContext no se pudo inicializar en este momento (se reintentará en reproducción):', e);
     }
   }
 

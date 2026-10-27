@@ -35,29 +35,33 @@ export const HistoryList: React.FC<HistoryListProps> = ({
   const [sortBy, setSortBy] = useState<'recent' | 'oldest' | 'name-asc' | 'author-asc' | 'progress-desc'>('recent');
   const [showAdvancedFilters, setShowAdvancedFilters] = useState<boolean>(false);
 
-  if (history.length === 0) return null;
-
   // Format date helper
   const formatDate = (timestamp: number) => {
-    const date = new Date(timestamp);
-    const now = new Date();
-    const isToday = date.toDateString() === now.toDateString();
+    try {
+      if (!timestamp || isNaN(timestamp)) return '';
+      const date = new Date(timestamp);
+      if (isNaN(date.getTime())) return '';
+      const now = new Date();
+      const isToday = date.toDateString() === now.toDateString();
 
-    if (isToday) {
-      return `Hoy, ${date.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}`;
+      if (isToday) {
+        return `Hoy, ${date.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}`;
+      }
+      return date.toLocaleDateString('es-ES', {
+        day: 'numeric',
+        month: 'short',
+        year: 'numeric',
+      });
+    } catch {
+      return '';
     }
-    return date.toLocaleDateString('es-ES', {
-      day: 'numeric',
-      month: 'short',
-      year: 'numeric',
-    });
   };
 
   // Extract list of unique authors from history
   const availableAuthors = useMemo(() => {
     const set = new Set<string>();
-    history.forEach((item) => {
-      if (item.author && item.author.trim()) {
+    (history || []).forEach((item) => {
+      if (item && item.author && typeof item.author === 'string' && item.author.trim()) {
         set.add(item.author.trim());
       }
     });
@@ -92,14 +96,17 @@ export const HistoryList: React.FC<HistoryListProps> = ({
     const thirtyDaysAgo = startOfToday - 30 * 24 * 60 * 60 * 1000;
     const startOfYear = new Date(now.getFullYear(), 0, 1).getTime();
 
-    const q = searchQuery.trim().toLowerCase();
+    const q = (searchQuery || '').trim().toLowerCase();
 
-    const result = history.filter((item) => {
+    const result = (history || []).filter((item) => {
+      if (!item) return false;
+      const itemTs = item.lastReadTimestamp || 0;
+
       // 1. Text Search Filter (by name, author, and/or date)
       if (q) {
-        const itemDateStr = formatDate(item.lastReadTimestamp).toLowerCase();
-        const itemName = item.name.toLowerCase();
-        const itemAuthor = (item.author || '').toLowerCase();
+        const itemDateStr = formatDate(itemTs).toLowerCase();
+        const itemName = (item.name || '').toLowerCase();
+        const itemAuthor = (typeof item.author === 'string' ? item.author : '').toLowerCase();
 
         if (searchField === 'all') {
           const matchName = itemName.includes(q);
@@ -117,31 +124,32 @@ export const HistoryList: React.FC<HistoryListProps> = ({
 
       // 2. Author Filter
       if (selectedAuthor !== 'all') {
+        const itemAuthorStr = (typeof item.author === 'string' ? item.author : '').trim();
         if (selectedAuthor === 'no-author') {
-          if (item.author && item.author.trim()) return false;
+          if (itemAuthorStr.length > 0) return false;
         } else {
-          if ((item.author || '').trim() !== selectedAuthor) return false;
+          if (itemAuthorStr !== selectedAuthor) return false;
         }
       }
 
       // 3. Date Period Filter
       if (datePeriod === 'today') {
-        if (item.lastReadTimestamp < startOfToday) return false;
+        if (itemTs < startOfToday) return false;
       } else if (datePeriod === 'week') {
-        if (item.lastReadTimestamp < sevenDaysAgo) return false;
+        if (itemTs < sevenDaysAgo) return false;
       } else if (datePeriod === 'month') {
-        if (item.lastReadTimestamp < thirtyDaysAgo) return false;
+        if (itemTs < thirtyDaysAgo) return false;
       } else if (datePeriod === 'year') {
-        if (item.lastReadTimestamp < startOfYear) return false;
+        if (itemTs < startOfYear) return false;
       } else if (datePeriod === 'custom') {
         if (customStartDate) {
           const startTs = new Date(customStartDate).getTime();
-          if (item.lastReadTimestamp < startTs) return false;
+          if (!isNaN(startTs) && itemTs < startTs) return false;
         }
         if (customEndDate) {
           // End of selected day
           const endTs = new Date(customEndDate).getTime() + 24 * 60 * 60 * 1000 - 1;
-          if (item.lastReadTimestamp > endTs) return false;
+          if (!isNaN(endTs) && itemTs > endTs) return false;
         }
       }
 
@@ -150,18 +158,20 @@ export const HistoryList: React.FC<HistoryListProps> = ({
 
     // 4. Sorting
     result.sort((a, b) => {
+      const aTs = a.lastReadTimestamp || 0;
+      const bTs = b.lastReadTimestamp || 0;
       if (sortBy === 'recent') {
-        return b.lastReadTimestamp - a.lastReadTimestamp;
+        return bTs - aTs;
       } else if (sortBy === 'oldest') {
-        return a.lastReadTimestamp - b.lastReadTimestamp;
+        return aTs - bTs;
       } else if (sortBy === 'name-asc') {
-        return a.name.localeCompare(b.name);
+        return (a.name || '').localeCompare(b.name || '');
       } else if (sortBy === 'author-asc') {
-        const authA = a.author || '';
-        const authB = b.author || '';
+        const authA = typeof a.author === 'string' ? a.author : '';
+        const authB = typeof b.author === 'string' ? b.author : '';
         return authA.localeCompare(authB);
       } else if (sortBy === 'progress-desc') {
-        return b.progressPercent - a.progressPercent;
+        return (b.progressPercent || 0) - (a.progressPercent || 0);
       }
       return 0;
     });
@@ -177,6 +187,8 @@ export const HistoryList: React.FC<HistoryListProps> = ({
     customEndDate,
     sortBy,
   ]);
+
+  if (!history || history.length === 0) return null;
 
   return (
     <div id="recent-documents-section" className="w-full max-w-4xl mx-auto px-4 mt-8 pb-12">

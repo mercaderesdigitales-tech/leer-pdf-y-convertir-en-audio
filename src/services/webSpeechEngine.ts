@@ -1,4 +1,5 @@
 import { SentenceItem, VoiceOption } from '../types';
+import { safeStorage } from './storageHelper';
 
 export interface WebSpeechCallbacks {
   onSentenceStart?: (index: number) => void;
@@ -12,8 +13,8 @@ export interface WebSpeechCallbacks {
  * Heuristics to reliably detect voice gender across Android (Google TTS / Samsung),
  * iOS (Safari / Apple TTS), Windows (SAPI/OneCore), and macOS.
  */
-export function detectVoiceGender(name: string, voiceURI: string = '', lang: string = ''): 'Masculino' | 'Femenino' {
-  const str = `${name} ${voiceURI} ${lang}`.toLowerCase();
+export function detectVoiceGender(name: string = '', voiceURI: string = '', lang: string = ''): 'Masculino' | 'Femenino' {
+  const str = `${name || ''} ${voiceURI || ''} ${lang || ''}`.toLowerCase();
 
   // Explicit male markers and common male voice names in Spanish & English
   const maleKeywords = [
@@ -80,41 +81,41 @@ export class WebSpeechEngine {
   private onVoicesChangedListener?: (voices: VoiceOption[]) => void;
 
   constructor() {
-    if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
-      this.synth = window.speechSynthesis;
-      this.loadVoices();
+    try {
+      if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+        this.synth = window.speechSynthesis;
+        this.loadVoices();
 
-      // Ensure voiceschanged listener is bound cleanly across mobile browsers
-      const handleVoicesChanged = () => {
-        const v = this.loadVoices();
-        this.onVoicesChangedListener?.(v);
-      };
+        // Ensure voiceschanged listener is bound cleanly across mobile browsers
+        const handleVoicesChanged = () => {
+          const v = this.loadVoices();
+          this.onVoicesChangedListener?.(v);
+        };
 
-      if (typeof window.speechSynthesis.addEventListener === 'function') {
-        window.speechSynthesis.addEventListener('voiceschanged', handleVoicesChanged);
-      } else if (this.synth.onvoiceschanged !== undefined) {
-        this.synth.onvoiceschanged = handleVoicesChanged;
-      }
+        if (typeof window.speechSynthesis.addEventListener === 'function') {
+          window.speechSynthesis.addEventListener('voiceschanged', handleVoicesChanged);
+        } else if (this.synth.onvoiceschanged !== undefined) {
+          this.synth.onvoiceschanged = handleVoicesChanged;
+        }
 
-      // Proactive polling for mobile browsers (Chrome Android / Samsung Internet)
-      [100, 300, 600, 1200, 2500, 5000].forEach((delay) => {
-        setTimeout(() => {
-          const fresh = this.loadVoices();
-          if (fresh.length > 0) {
-            this.onVoicesChangedListener?.(fresh);
-          }
-        }, delay);
-      });
+        // Proactive polling for mobile browsers (Chrome Android / Samsung Internet)
+        [100, 300, 600, 1200, 2500, 5000].forEach((delay) => {
+          setTimeout(() => {
+            const fresh = this.loadVoices();
+            if (fresh.length > 0) {
+              this.onVoicesChangedListener?.(fresh);
+            }
+          }, delay);
+        });
 
-      // Restore saved voice preference from localStorage if available
-      try {
-        const savedVoiceId = localStorage.getItem('vozpdf_voice');
+        // Restore saved voice preference from localStorage if available
+        const savedVoiceId = safeStorage.getItem('vozpdf_voice');
         if (savedVoiceId) {
           this.selectedVoiceId = savedVoiceId;
         }
-      } catch {
-        // ignore
       }
+    } catch (e) {
+      console.warn('WebSpeechEngine inicializado con soporte limitado:', e);
     }
   }
 
@@ -132,18 +133,22 @@ export class WebSpeechEngine {
   public loadVoices(): VoiceOption[] {
     if (!this.synth) return [];
 
-    const fresh = this.synth.getVoices();
-    if (fresh && fresh.length > 0) {
-      this.voices = fresh;
+    try {
+      const fresh = this.synth.getVoices();
+      if (fresh && fresh.length > 0) {
+        this.voices = fresh;
+      }
+    } catch {
+      // ignore
     }
 
-    const voiceOptions: VoiceOption[] = this.voices.map((v) => {
-      const id = v.voiceURI || v.name;
-      const detectedGender = detectVoiceGender(v.name, v.voiceURI, v.lang);
+    const voiceOptions: VoiceOption[] = (this.voices || []).map((v) => {
+      const id = v.voiceURI || v.name || 'voice_' + Math.random();
+      const detectedGender = detectVoiceGender(v.name || '', v.voiceURI || '', v.lang || '');
       return {
         id,
-        name: v.name,
-        lang: v.lang,
+        name: v.name || 'Voz del sistema',
+        lang: v.lang || 'es-ES',
         engine: 'webspeech',
         gender: detectedGender,
         quality: v.localService ? 'Nativa / Local' : 'Online',
@@ -153,12 +158,12 @@ export class WebSpeechEngine {
     // Re-resolve selected voice with fresh references
     if (this.selectedVoiceId) {
       this.resolveAndSetVoice(this.selectedVoiceId);
-    } else if (this.voices.length > 0) {
+    } else if (this.voices && this.voices.length > 0) {
       const spanishVoice = this.voices.find(
-        (v) => v.lang.startsWith('es-ES') || v.lang.startsWith('es')
+        (v) => (v.lang || '').startsWith('es-ES') || (v.lang || '').startsWith('es')
       );
       this.selectedVoice = spanishVoice || this.voices[0];
-      this.selectedVoiceId = this.selectedVoice.voiceURI || this.selectedVoice.name;
+      this.selectedVoiceId = this.selectedVoice.voiceURI || this.selectedVoice.name || '';
     }
 
     return voiceOptions;
@@ -170,18 +175,23 @@ export class WebSpeechEngine {
 
   private resolveAndSetVoice(voiceId: string): boolean {
     if (!this.synth) return false;
-    // Always query fresh voices in case mobile browser loaded voices dynamically
-    const currentList = this.synth.getVoices();
-    if (currentList.length > 0) {
-      this.voices = currentList;
+    try {
+      const currentList = this.synth.getVoices();
+      if (currentList && currentList.length > 0) {
+        this.voices = currentList;
+      }
+    } catch {
+      // ignore
     }
+
+    const targetId = (voiceId || '').toLowerCase();
 
     // Try multiple matching strategies for mobile Android/iOS voice IDs
     const found =
       this.voices.find((v) => v.voiceURI === voiceId) ||
       this.voices.find((v) => v.name === voiceId) ||
-      this.voices.find((v) => (v.voiceURI || v.name).toLowerCase() === voiceId.toLowerCase()) ||
-      this.voices.find((v) => v.lang && voiceId.startsWith(v.lang));
+      this.voices.find((v) => (v.voiceURI || v.name || '').toLowerCase() === targetId) ||
+      this.voices.find((v) => v.lang && voiceId && voiceId.startsWith(v.lang));
 
     if (found) {
       this.selectedVoice = found;
@@ -194,11 +204,7 @@ export class WebSpeechEngine {
 
   public setVoice(voiceId: string) {
     this.selectedVoiceId = voiceId;
-    try {
-      localStorage.setItem('vozpdf_voice', voiceId);
-    } catch {
-      // ignore
-    }
+    safeStorage.setItem('vozpdf_voice', voiceId);
 
     this.resolveAndSetVoice(voiceId);
 
