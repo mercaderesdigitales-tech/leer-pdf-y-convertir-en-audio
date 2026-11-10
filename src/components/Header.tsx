@@ -1,5 +1,5 @@
 import React from 'react';
-import { Volume2, Settings, Download, Sun, Moon, Sparkles, Zap, Home, HelpCircle, Scissors } from 'lucide-react';
+import { Volume2, Settings, Download, Sun, Moon, Sparkles, Zap, Home, HelpCircle, Scissors, Languages } from 'lucide-react';
 import { TTSEngineType } from '../types';
 import { PWAInstallButton } from './PWAInstallButton';
 
@@ -10,6 +10,7 @@ interface HeaderProps {
   onOpenHowItWorks: () => void;
   onOpenInstallApp: () => void;
   onOpenSplitPdf: () => void;
+  onOpenTranslatePdf: () => void;
   onGoHome: () => void;
   hasDocument: boolean;
   theme: 'light' | 'dark';
@@ -24,6 +25,7 @@ export const Header: React.FC<HeaderProps> = ({
   onOpenHowItWorks,
   onOpenInstallApp,
   onOpenSplitPdf,
+  onOpenTranslatePdf,
   onGoHome,
   hasDocument,
   theme,
@@ -50,7 +52,7 @@ export const Header: React.FC<HeaderProps> = ({
         </div>
 
         {/* Zone 2: Navigation & Status Links (Desktop) */}
-        <nav className="hidden lg:flex items-center gap-5 text-sm font-medium text-slate-600 dark:text-slate-300">
+        <nav className="hidden lg:flex items-center gap-4 text-sm font-medium text-slate-600 dark:text-slate-300">
           {hasDocument && (
             <button
               onClick={onGoHome}
@@ -69,6 +71,15 @@ export const Header: React.FC<HeaderProps> = ({
           >
             <Scissors className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
             <span>Dividir PDF</span>
+          </button>
+
+          <button
+            onClick={onOpenTranslatePdf}
+            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-indigo-50/80 dark:bg-indigo-950/50 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-100 dark:hover:bg-indigo-900/60 transition-colors cursor-pointer whitespace-nowrap font-semibold"
+            title="Traducir un PDF detectando el idioma y generando un nuevo PDF traducido"
+          >
+            <Languages className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
+            <span>Traducir PDF</span>
           </button>
 
           <button
@@ -115,11 +126,21 @@ export const Header: React.FC<HeaderProps> = ({
           {/* Dividir PDF button on mobile / tablet top bar */}
           <button
             onClick={onOpenSplitPdf}
-            className="lg:hidden flex items-center gap-1 px-2.5 py-1.5 text-xs font-semibold text-indigo-700 dark:text-indigo-300 bg-indigo-50 dark:bg-indigo-950/60 hover:bg-indigo-100 dark:hover:bg-indigo-900/70 rounded-lg transition-colors whitespace-nowrap cursor-pointer"
+            className="lg:hidden flex items-center gap-1 px-2 py-1.5 text-xs font-semibold text-indigo-700 dark:text-indigo-300 bg-indigo-50 dark:bg-indigo-950/60 hover:bg-indigo-100 dark:hover:bg-indigo-900/70 rounded-lg transition-colors whitespace-nowrap cursor-pointer"
             title="Dividir PDF por páginas"
           >
             <Scissors className="w-3.5 h-3.5" />
-            <span>Dividir PDF</span>
+            <span className="hidden xs:inline sm:inline">Dividir PDF</span>
+          </button>
+
+          {/* Traducir PDF button on mobile / tablet top bar */}
+          <button
+            onClick={onOpenTranslatePdf}
+            className="lg:hidden flex items-center gap-1 px-2 py-1.5 text-xs font-semibold text-indigo-700 dark:text-indigo-300 bg-indigo-50 dark:bg-indigo-950/60 hover:bg-indigo-100 dark:hover:bg-indigo-900/70 rounded-lg transition-colors whitespace-nowrap cursor-pointer"
+            title="Traducir PDF a otro idioma"
+          >
+            <Languages className="w-3.5 h-3.5" />
+            <span className="hidden xs:inline sm:inline">Traducir PDF</span>
           </button>
 
           {/* PWA Install Button */}
