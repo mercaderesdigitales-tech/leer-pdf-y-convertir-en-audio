@@ -1,5 +1,5 @@
 import React from 'react';
-import { Volume2, Settings, Download, Sun, Moon, Sparkles, Zap, Home, HelpCircle } from 'lucide-react';
+import { Volume2, Settings, Download, Sun, Moon, Sparkles, Zap, Home, HelpCircle, Scissors } from 'lucide-react';
 import { TTSEngineType } from '../types';
 import { PWAInstallButton } from './PWAInstallButton';
 
@@ -9,6 +9,7 @@ interface HeaderProps {
   onOpenExport: () => void;
   onOpenHowItWorks: () => void;
   onOpenInstallApp: () => void;
+  onOpenSplitPdf: () => void;
   onGoHome: () => void;
   hasDocument: boolean;
   theme: 'light' | 'dark';
@@ -22,6 +23,7 @@ export const Header: React.FC<HeaderProps> = ({
   onOpenExport,
   onOpenHowItWorks,
   onOpenInstallApp,
+  onOpenSplitPdf,
   onGoHome,
   hasDocument,
   theme,
@@ -30,7 +32,7 @@ export const Header: React.FC<HeaderProps> = ({
 }) => {
   return (
     <header className="sticky top-0 z-40 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 transition-colors">
-      <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-3 sm:gap-6">
+      <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-2 sm:gap-6">
         {/* Zone 1: Brand Wordmark (Clickable to go home) */}
         <div
           onClick={onGoHome}
@@ -61,6 +63,15 @@ export const Header: React.FC<HeaderProps> = ({
           )}
 
           <button
+            onClick={onOpenSplitPdf}
+            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-indigo-50/80 dark:bg-indigo-950/50 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-100 dark:hover:bg-indigo-900/60 transition-colors cursor-pointer whitespace-nowrap font-semibold"
+            title="Dividir un PDF por rango de páginas y descargarlo con nuevo nombre"
+          >
+            <Scissors className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
+            <span>Dividir PDF</span>
+          </button>
+
+          <button
             onClick={onOpenSettings}
             className="flex items-center gap-1.5 hover:text-slate-900 dark:hover:text-white transition-colors cursor-pointer whitespace-nowrap"
             title="Cambiar motor o voz"
@@ -88,7 +99,7 @@ export const Header: React.FC<HeaderProps> = ({
         </nav>
 
         {/* Zone 3: Primary Actions (Mobile + Desktop) */}
-        <div className="flex items-center gap-1.5 sm:gap-2.5 shrink-0">
+        <div className="flex items-center gap-1 sm:gap-2 shrink-0">
           {/* Mobile Home button */}
           {hasDocument && (
             <button
@@ -100,6 +111,16 @@ export const Header: React.FC<HeaderProps> = ({
               <Home className="w-4 h-4" />
             </button>
           )}
+
+          {/* Dividir PDF button on mobile / tablet top bar */}
+          <button
+            onClick={onOpenSplitPdf}
+            className="lg:hidden flex items-center gap-1 px-2.5 py-1.5 text-xs font-semibold text-indigo-700 dark:text-indigo-300 bg-indigo-50 dark:bg-indigo-950/60 hover:bg-indigo-100 dark:hover:bg-indigo-900/70 rounded-lg transition-colors whitespace-nowrap cursor-pointer"
+            title="Dividir PDF por páginas"
+          >
+            <Scissors className="w-3.5 h-3.5" />
+            <span>Dividir PDF</span>
+          </button>
 
           {/* PWA Install Button */}
           <PWAInstallButton variant="header" />

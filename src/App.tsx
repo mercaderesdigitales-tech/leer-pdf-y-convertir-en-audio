@@ -36,6 +36,7 @@ import { GoogleDriveModal } from './components/GoogleDriveModal';
 import { InstallAppModal } from './components/InstallAppModal';
 import { UploadChoiceModal } from './components/UploadChoiceModal';
 import { MobileBottomNav } from './components/MobileBottomNav';
+import { SplitPdfModal } from './components/SplitPdfModal';
 import { safeStorage } from './services/storageHelper';
 
 export default function App() {
@@ -144,6 +145,7 @@ export default function App() {
   const [isHowItWorksOpen, setIsHowItWorksOpen] = useState<boolean>(false);
   const [isGoogleDriveOpen, setIsGoogleDriveOpen] = useState<boolean>(false);
   const [isInstallAppOpen, setIsInstallAppOpen] = useState<boolean>(false);
+  const [isSplitPdfOpen, setIsSplitPdfOpen] = useState<boolean>(false);
 
   // Engines instances
   const webSpeechRef = useRef<WebSpeechEngine | null>(null);
@@ -572,6 +574,7 @@ export default function App() {
         onOpenExport={() => setIsExportOpen(true)}
         onOpenHowItWorks={() => setIsHowItWorksOpen(true)}
         onOpenInstallApp={() => setIsInstallAppOpen(true)}
+        onOpenSplitPdf={() => setIsSplitPdfOpen(true)}
         onGoHome={handleGoHome}
         hasDocument={Boolean(documentData)}
         theme={theme}
@@ -728,6 +731,14 @@ export default function App() {
       <InstallAppModal
         isOpen={isInstallAppOpen}
         onClose={() => setIsInstallAppOpen(false)}
+      />
+
+      {/* Split PDF Modal */}
+      <SplitPdfModal
+        isOpen={isSplitPdfOpen}
+        onClose={() => setIsSplitPdfOpen(false)}
+        initialFile={originalFile}
+        onOpenSplitPdfInReader={handleFileSelected}
       />
 
       {/* Audio Export Modal */}
