@@ -19,7 +19,7 @@
     "@vitejs/plugin-react": "^6.1.1",
     "dotenv": "^17.2.3",
     "express": "^4.21.2",
-    "firebase": "^13.1.0",
+    "firebase": "^13.3.0",
     "kokoro-js": "^1.2.1",
     "lucide-react": "^0.546.0",
     "mespeak": "^2.0.2",
@@ -45,6 +45,9 @@
   },
   "overrides": {
     "sharp": "0.35.5",
-    "body-parser": "^1.20.9"
+    "body-parser": "^1.20.9",
+    "@grpc/grpc-js": "^1.14.5",
+    "minimatch": "^11.0.1",
+    "glob": "^14.0.2"
   }
 }
